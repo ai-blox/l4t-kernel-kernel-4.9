@@ -22,10 +22,14 @@
 
 #define HW_CFG					(0x010)
 #define HW_CFG_LRST_				BIT(1)
+#define HW_CFG_LED0_EN_			BIT(20)
+#define HW_CFG_LED1_EN_			BIT(21)
 
 #define PMT_CTL					(0x014)
 #define PMT_CTL_READY_				BIT(7)
 #define PMT_CTL_ETH_PHY_RST_			BIT(4)
+
+#define PHY_LED_MODE			(0x018)
 
 #define DP_SEL				(0x024)
 #define DP_SEL_DPRDY_			BIT(31)

@@ -2582,6 +2582,7 @@ static int lan743x_hardware_init(struct lan743x_adapter *adapter,
 	struct lan743x_tx *tx;
 	int index;
 	int ret;
+	u32 data;
 
 	adapter->intr.irq = adapter->pdev->irq;
 	lan743x_csr_write(adapter, INT_EN_CLR, 0xFFFFFFFF);
@@ -2593,6 +2594,16 @@ static int lan743x_hardware_init(struct lan743x_adapter *adapter,
 	ret = lan743x_phy_init(adapter);
 	if (ret)
 		return ret;
+
+    // Setup LED's
+	data = 	lan743x_csr_read(adapter, PHY_LED_MODE);
+	data = 0x000000A0;
+	lan743x_csr_write(adapter, PHY_LED_MODE, data);
+
+	data = lan743x_csr_read(adapter, HW_CFG);
+	data |= HW_CFG_LED0_EN_;
+	data |= HW_CFG_LED1_EN_;
+	lan743x_csr_write(adapter, HW_CFG, data);
 
 	lan743x_rfe_update_mac_address(adapter);
 
