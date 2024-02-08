@@ -34,6 +34,7 @@ static int lan743x_pci_init(struct lan743x_adapter *adapter,
 	if (ret)
 		goto return_error;
 
+	netif_info(adapter, probe, adapter->netdev, "DRV Build date __DATE__");
 	netif_info(adapter, probe, adapter->netdev,
 		   "PCI: Vendor ID = 0x%04X, Device ID = 0x%04X\n",
 		   pdev->vendor, pdev->device);
@@ -1006,10 +1007,18 @@ static int lan743x_phy_open(struct lan743x_adapter *adapter)
 		goto return_error;
 
 	/* MAC doesn't support 1000T Half */
+	// AIBL4T-19
 	//phy_remove_link_mode(phydev, ETHTOOL_LINK_MODE_1000baseT_Half_BIT);
+	phydev->supported &= ~BIT(ETHTOOL_LINK_MODE_1000baseT_Half_BIT);
+	phydev->advertising = phydev->supported;
 
 	/* support both flow controls */
-	phy_support_asym_pause(phydev);
+	// AIBL4T-19
+	//phy_support_asym_pause(phydev);
+	phydev->supported &= ~SUPPORTED_Asym_Pause;
+	phydev->supported |= SUPPORTED_Pause;
+	phydev->advertising = phydev->supported;
+
 	phy->fc_request_control = (FLOW_CTRL_RX | FLOW_CTRL_TX);
 	phy->fc_autoneg = phydev->autoneg;
 
@@ -1666,15 +1675,18 @@ static int lan743x_tx_napi_poll(struct napi_struct *napi, int weight)
 		netif_wake_queue(adapter->netdev);
 	}
 
-	if (!napi_complete(napi))
-		goto done;
+	// AIBL4T-19
+	//if (!napi_complete(napi))
+	//	goto done;
+	napi_complete(napi);
 
 	/* enable isr */
 	lan743x_csr_write(adapter, INT_EN_SET,
 			  INT_BIT_DMA_TX_(tx->channel_number));
 	lan743x_csr_read(adapter, INT_STS);
 
-done:
+// AIBL4T-19
+//done:
 	return 0;
 }
 
@@ -2176,8 +2188,10 @@ static int lan743x_rx_napi_poll(struct napi_struct *napi, int weight)
 	if (count == weight)
 		goto done;
 
-	if (!napi_complete_done(napi, count))
-		goto done;
+	// AIBL4T-19
+	//if (!napi_complete_done(napi, count))
+	//	goto done;
+	napi_complete_done(napi, count);
 
 	if (rx->vector_flags & LAN743X_VECTOR_FLAG_VECTOR_ENABLE_AUTO_SET)
 		rx_tail_flags |= RX_TAIL_SET_TOP_INT_VEC_EN_;
@@ -2558,7 +2572,7 @@ static int lan743x_netdev_change_mtu(struct net_device *netdev, int new_mtu)
 	return ret;
 }
 
-static void lan743x_netdev_get_stats64(struct net_device *netdev,
+static struct rtnl_link_stats64 *lan743x_netdev_get_stats64(struct net_device *netdev,
 				       struct rtnl_link_stats64 *stats)
 {
 	struct lan743x_adapter *adapter = netdev_priv(netdev);
@@ -2603,6 +2617,8 @@ static void lan743x_netdev_get_stats64(struct net_device *netdev,
 					     STAT_TX_MULTIPLE_COLLISIONS) +
 			    lan743x_csr_read(adapter,
 					     STAT_TX_LATE_COLLISIONS);
+
+	return stats;
 }
 
 static int lan743x_netdev_set_mac_address(struct net_device *netdev,
@@ -2744,8 +2760,11 @@ static int lan743x_pcidev_probe(struct pci_dev *pdev,
 	struct net_device *netdev = NULL;
 	int ret = -ENODEV;
 
-	netdev = devm_alloc_etherdev(&pdev->dev,
-				     sizeof(struct lan743x_adapter));
+	// AIBL4T-19
+	//netdev = devm_alloc_etherdev(&pdev->dev,
+ 	//			     sizeof(struct lan743x_adapter));
+	netdev = alloc_etherdev(sizeof(struct lan743x_adapter));
+
 	if (!netdev)
 		goto return_error;
 
@@ -2756,7 +2775,10 @@ static int lan743x_pcidev_probe(struct pci_dev *pdev,
 	adapter->msg_enable = NETIF_MSG_DRV | NETIF_MSG_PROBE |
 			      NETIF_MSG_LINK | NETIF_MSG_IFUP |
 			      NETIF_MSG_IFDOWN | NETIF_MSG_TX_QUEUED;
-	netdev->max_mtu = LAN743X_MAX_FRAME_SIZE;
+	// AIBL4T-19
+    //netdev->max_mtu = LAN743X_MAX_FRAME_SIZE;
+   	netdev->mtu = LAN743X_MAX_FRAME_SIZE;
+
 
 	ret = lan743x_pci_init(adapter, pdev);
 	if (ret)

@@ -60,6 +60,8 @@ static void lan743x_ptp_wait_till_cmd_done(struct lan743x_adapter *adapter,
 	}
 }
 
+/*
+AIBL4T-19
 static void lan743x_ptp_tx_ts_enqueue_ts(struct lan743x_adapter *adapter,
 					 u32 seconds, u32 nano_seconds,
 					 u32 header)
@@ -77,7 +79,7 @@ static void lan743x_ptp_tx_ts_enqueue_ts(struct lan743x_adapter *adapter,
 			  "tx ts queue overflow\n");
 	}
 	spin_unlock_bh(&ptp->tx_ts_lock);
-}
+} */
 
 static void lan743x_ptp_tx_ts_complete(struct lan743x_adapter *adapter)
 {
@@ -258,7 +260,8 @@ static void lan743x_gpio_release(struct lan743x_adapter *adapter, int bit)
 	}
 	spin_unlock_irqrestore(&gpio->gpio_lock, irq_flags);
 }
-
+/*
+AIBL4T-19
 static int lan743x_ptpci_adjfine(struct ptp_clock_info *ptpci, long scaled_ppm)
 {
 	struct lan743x_ptp *ptp =
@@ -290,7 +293,7 @@ static int lan743x_ptpci_adjfine(struct ptp_clock_info *ptpci, long scaled_ppm)
 			  lan743x_rate_adj);
 
 	return 0;
-}
+}*/
 
 static int lan743x_ptpci_adjfreq(struct ptp_clock_info *ptpci, s32 delta_ppb)
 {
@@ -369,7 +372,8 @@ static int lan743x_ptpci_settime64(struct ptp_clock_info *ptpci,
 		if (ts->tv_sec > 0xFFFFFFFFLL ||
 		    ts->tv_sec < 0) {
 			netif_warn(adapter, drv, adapter->netdev,
-				   "ts->tv_sec out of range, %lld\n",
+					//AIBL4T-19 -> changed %lld to %ld
+				   "ts->tv_sec out of range, %ld\n",
 				   ts->tv_sec);
 			return -ERANGE;
 		}
@@ -568,6 +572,8 @@ static int lan743x_ptpci_enable(struct ptp_clock_info *ptpci,
 	return 0;
 }
 
+/*
+AIBL4T-19
 static long lan743x_ptpci_do_aux_work(struct ptp_clock_info *ptpci)
 {
 	struct lan743x_ptp *ptp =
@@ -619,7 +625,7 @@ static long lan743x_ptpci_do_aux_work(struct ptp_clock_info *ptpci)
 	lan743x_csr_write(adapter, INT_EN_SET, INT_BIT_1588_);
 
 	return -1;
-}
+}*/
 
 static void lan743x_ptp_clock_get(struct lan743x_adapter *adapter,
 				  u32 *seconds, u32 *nano_seconds,
@@ -775,10 +781,11 @@ void lan743x_ptp_isr(void *context)
 	ptp_int_sts = lan743x_csr_read(adapter, PTP_INT_STS);
 	ptp_int_sts &= lan743x_csr_read(adapter, PTP_INT_EN_SET);
 
-	if (ptp_int_sts & PTP_INT_BIT_TX_TS_) {
-		ptp_schedule_worker(ptp->ptp_clock, 0);
-		enable_flag = 0;/* tasklet will re-enable later */
-	}
+//
+//	if (ptp_int_sts & PTP_INT_BIT_TX_TS_) {
+//		ptp_schedule_worker(ptp->ptp_clock, 0);
+//		enable_flag = 0;/* tasklet will re-enable later */
+//	}
 	if (ptp_int_sts & PTP_INT_BIT_TX_SWTS_ERR_) {
 		netif_err(adapter, drv, adapter->netdev,
 			  "PTP TX Software Timestamp Error\n");
@@ -831,7 +838,9 @@ static void lan743x_ptp_sync_to_system_clock(struct lan743x_adapter *adapter)
 {
 	struct timespec64 ts;
 
-	ktime_get_clocktai_ts64(&ts);
+	//AIBL4T-19
+	//ktime_get_clocktai_ts64(&ts);
+	ts = ktime_to_timespec64(ktime_get_clocktai());
 
 	lan743x_ptp_clock_set(adapter, ts.tv_sec, ts.tv_nsec, 0);
 }
@@ -884,7 +893,7 @@ int lan743x_ptp_open(struct lan743x_adapter *adapter)
 	lan743x_ptp_enable(adapter);
 	lan743x_csr_write(adapter, INT_EN_SET, INT_BIT_1588_);
 	lan743x_csr_write(adapter, PTP_INT_EN_SET,
-			  PTP_INT_BIT_TX_SWTS_ERR_ | PTP_INT_BIT_TX_TS_);
+			  PTP_INT_BIT_TX_SWTS_ERR_ /*AIBL4T-19 | PTP_INT_BIT_TX_TS_*/);
 	ptp->flags |= PTP_FLAG_ISR_ENABLED;
 
 	if (!IS_ENABLED(CONFIG_PTP_1588_CLOCK))
@@ -905,14 +914,16 @@ int lan743x_ptp_open(struct lan743x_adapter *adapter)
 	ptp->ptp_clock_info.n_pins = 0;
 	ptp->ptp_clock_info.pps = 0;
 	ptp->ptp_clock_info.pin_config = NULL;
-	ptp->ptp_clock_info.adjfine = lan743x_ptpci_adjfine;
+	//AIBL4T-19
+	//ptp->ptp_clock_info.adjfine = lan743x_ptpci_adjfine;
 	ptp->ptp_clock_info.adjfreq = lan743x_ptpci_adjfreq;
 	ptp->ptp_clock_info.adjtime = lan743x_ptpci_adjtime;
 	ptp->ptp_clock_info.gettime64 = lan743x_ptpci_gettime64;
 	ptp->ptp_clock_info.getcrosststamp = NULL;
 	ptp->ptp_clock_info.settime64 = lan743x_ptpci_settime64;
 	ptp->ptp_clock_info.enable = lan743x_ptpci_enable;
-	ptp->ptp_clock_info.do_aux_work = lan743x_ptpci_do_aux_work;
+	//AIBL4T-19		
+	//ptp->ptp_clock_info.do_aux_work = lan743x_ptpci_do_aux_work;
 	ptp->ptp_clock_info.verify = NULL;
 
 	ptp->ptp_clock = ptp_clock_register(&ptp->ptp_clock_info,
@@ -949,8 +960,8 @@ void lan743x_ptp_close(struct lan743x_adapter *adapter)
 
 	if (ptp->flags & PTP_FLAG_ISR_ENABLED) {
 		lan743x_csr_write(adapter, PTP_INT_EN_CLR,
-				  PTP_INT_BIT_TX_SWTS_ERR_ |
-				  PTP_INT_BIT_TX_TS_);
+				  PTP_INT_BIT_TX_SWTS_ERR_ /*AIBL4T-19|
+				   PTP_INT_BIT_TX_TS_*/);
 		lan743x_csr_write(adapter, INT_EN_CLR, INT_BIT_1588_);
 		ptp->flags &= ~PTP_FLAG_ISR_ENABLED;
 	}
