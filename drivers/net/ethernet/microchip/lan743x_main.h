@@ -26,7 +26,9 @@
 #define FPGA_REV_GET_MAJOR_(fpga_rev)	((fpga_rev) & 0x000000FF)
 
 #define HW_CFG					(0x010)
-#define HW_CFG_LRST_				BIT(1)
+#define HW_CFG_LRST_			BIT(1)
+#define HW_CFG_LED0_EN_			BIT(20)
+#define HW_CFG_LED1_EN_			BIT(21)
 
 #define PMT_CTL					(0x014)
 #define PMT_CTL_ETH_PHY_D3_COLD_OVR_		BIT(27)
@@ -41,6 +43,10 @@
 #define PMT_CTL_WOL_EN_				BIT(3)
 #define PMT_CTL_ETH_PHY_WAKE_EN_		BIT(2)
 #define PMT_CTL_WUPS_MASK_			(0x00000003)
+
+#define PHY_LED_MODE_SELECT 	(0x18)
+
+#define PHY_LED_BEHAVIOR		(0x1C)
 
 #define DP_SEL				(0x024)
 #define DP_SEL_DPRDY_			BIT(31)

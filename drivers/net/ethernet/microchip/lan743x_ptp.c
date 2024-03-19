@@ -25,6 +25,7 @@ static void lan743x_ptp_clock_set(struct lan743x_adapter *adapter,
 
 int lan743x_gpio_init(struct lan743x_adapter *adapter)
 {
+	u32 data;
 	struct lan743x_gpio *gpio = &adapter->gpio;
 
 	spin_lock_init(&gpio->gpio_lock);
@@ -37,6 +38,20 @@ int lan743x_gpio_init(struct lan743x_adapter *adapter)
 	lan743x_csr_write(adapter, GPIO_CFG1, gpio->gpio_cfg1);
 	lan743x_csr_write(adapter, GPIO_CFG2, gpio->gpio_cfg2);
 	lan743x_csr_write(adapter, GPIO_CFG3, gpio->gpio_cfg3);
+
+	/* Enable LED's */
+	data = lan743x_csr_read(adapter, HW_CFG);
+	data |= HW_CFG_LED0_EN_;
+	data |= HW_CFG_LED1_EN_;
+	lan743x_csr_write(adapter, HW_CFG, data);
+
+	data = 0x00A0; /* LED0 (0)  LINK/ACTIVITY 
+				      LED1 (10) ACTIVITY */ 
+	lan743x_csr_write(adapter, PHY_LED_MODE_SELECT, data);
+
+	data = lan743x_csr_read(adapter, PHY_LED_BEHAVIOR);
+	data |= 0x0001; /* LED0 Combination disabled (only link) */
+	lan743x_csr_write(adapter, PHY_LED_BEHAVIOR, data);
 
 	return 0;
 }
