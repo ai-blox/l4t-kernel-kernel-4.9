@@ -1678,6 +1678,14 @@ static int lan743x_tx_napi_poll(struct napi_struct *napi, int weight)
 	// AIBL4T-19
 	//if (!napi_complete(napi))
 	//	goto done;
+
+	/*
+	 * don't let napi dequeue from the cpu poll list
+	 * just in case its running on a different cpu
+	 */
+	if (unlikely(test_bit(NAPI_STATE_NPSVC, &napi->state))) 
+		goto done;
+
 	napi_complete(napi);
 
 	/* enable isr */
@@ -1685,8 +1693,7 @@ static int lan743x_tx_napi_poll(struct napi_struct *napi, int weight)
 			  INT_BIT_DMA_TX_(tx->channel_number));
 	lan743x_csr_read(adapter, INT_STS);
 
-// AIBL4T-19
-//done:
+done:
 	return 0;
 }
 
@@ -2191,6 +2198,14 @@ static int lan743x_rx_napi_poll(struct napi_struct *napi, int weight)
 	// AIBL4T-19
 	//if (!napi_complete_done(napi, count))
 	//	goto done;
+
+	/*
+	 * don't let napi dequeue from the cpu poll list
+	 * just in case its running on a different cpu
+	 */
+	if (unlikely(test_bit(NAPI_STATE_NPSVC, &napi->state))) 
+		goto done;
+
 	napi_complete_done(napi, count);
 
 	if (rx->vector_flags & LAN743X_VECTOR_FLAG_VECTOR_ENABLE_AUTO_SET)
