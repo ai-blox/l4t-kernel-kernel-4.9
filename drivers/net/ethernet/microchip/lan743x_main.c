@@ -2409,7 +2409,7 @@ static int lan743x_rx_open(struct lan743x_rx *rx)
 		data |= RX_CFG_B_RX_PAD_2_;
 	data &= ~RX_CFG_B_RX_RING_LEN_MASK_;
 	data |= ((rx->ring_size) & RX_CFG_B_RX_RING_LEN_MASK_);
-	data |= RX_CFG_B_TS_ALL_RX_;
+	data |= RX_CFG_B_TS_DESCR_EN_;
 	if (!(adapter->csr.flags & LAN743X_CSR_FLAG_IS_A0))
 		data |= RX_CFG_B_RDMABL_512_;
 
@@ -2794,7 +2794,7 @@ static int lan743x_pcidev_probe(struct pci_dev *pdev,
 			      NETIF_MSG_IFDOWN | NETIF_MSG_TX_QUEUED;
 	// AIBL4T-19
     //netdev->max_mtu = LAN743X_MAX_FRAME_SIZE;
-   	netdev->mtu = LAN743X_MAX_FRAME_SIZE;
+   	//netdev->mtu = LAN743X_MAX_FRAME_SIZE;
 
 
 	ret = lan743x_pci_init(adapter, pdev);

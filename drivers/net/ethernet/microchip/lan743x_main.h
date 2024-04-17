@@ -390,6 +390,7 @@
 
 #define RX_CFG_B(channel)			(0xC44 + ((channel) << 6))
 #define RX_CFG_B_TS_ALL_RX_			BIT(29)
+#define RX_CFG_B_TS_DESCR_EN_			BIT(28)
 #define RX_CFG_B_RX_PAD_MASK_			(0x03000000)
 #define RX_CFG_B_RX_PAD_0_			(0x00000000)
 #define RX_CFG_B_RX_PAD_2_			(0x02000000)
@@ -602,7 +603,7 @@ struct lan743x_vector {
 	void			*context;
 };
 
-#define LAN743X_MAX_VECTOR_COUNT	(8)
+#define LAN743X_MAX_VECTOR_COUNT	(1)
 
 struct lan743x_intr {
 	int			flags;
