@@ -351,6 +351,8 @@ static int lan743x_intr_test_isr(struct lan743x_adapter *adapter)
 
 	intr->software_isr_flag = 0;
 
+	return 0;
+
 	/* enable interrupt */
 	lan743x_csr_write(adapter, INT_EN_SET, INT_BIT_SW_GP_);
 
