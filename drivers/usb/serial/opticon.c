@@ -22,6 +22,9 @@
 #include <linux/usb/serial.h>
 #include <linux/uaccess.h>
 
+#define SIMCON_SIM7600_VID 0x1E0E
+#define SIMCON_SIM7600_PID 0x9001
+
 #define CONTROL_RTS			0x02
 #define RESEND_CTS_STATE	0x03
 

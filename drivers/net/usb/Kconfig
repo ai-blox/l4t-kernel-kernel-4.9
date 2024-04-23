@@ -363,6 +363,13 @@ config USB_NET_NET1080
 	  on this design:  one NetChip 1080 chip and supporting logic,
 	  optionally with LEDs that indicate traffic
 
+config CONFIG_USB_NET_SIM7600
+	tristate "SIM7500/SIM7600 NDIS driver"
+	default y
+	depends on USB_USBNET
+	help
+	  Code inplemented from the SIMCON website
+
 config USB_NET_PLUSB
 	tristate "Prolific PL-2301/2302/25A1/27A1 based cables"
 	# if the handshake/init/reset problems, from original 'plusb',
