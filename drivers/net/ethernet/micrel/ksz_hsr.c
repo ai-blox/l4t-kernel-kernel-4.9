@@ -237,7 +237,7 @@ struct hsr_node *hsr_add_node_(struct list_head *node_db, unsigned char addr[],
 		return NULL;
 
 #if 1
-dbg_msg("%s %x %02x:%02x:%02x:%02x:%02x:%02x %04x\n", __func__, (int)node,
+dbg_msg("%s %x %02x:%02x:%02x:%02x:%02x:%02x %04x\n", __func__, (unsigned long)node,
 addr[0], addr[1], addr[2], addr[3], addr[4], addr[5], seq_out);
 #endif
 	ether_addr_copy(node->MacAddressA, addr);
@@ -602,7 +602,7 @@ int hsr_register_frame_out(struct hsr_port *port, struct hsr_node *node,
 if (port->type != HSR_PT_MASTER)
 #endif
 if (dbg_hsr < 10)
-dbg_msg("%s %x %d; %d %04x %04x %lu\n", __func__, (int)node, dbg_frame_out,
+dbg_msg("%s %x %d; %d %04x %04x %lu\n", __func__, (unsigned long)node, dbg_frame_out,
 port->type, sequence_nr,
 node->seq_out[port->type], diff);
 #endif
