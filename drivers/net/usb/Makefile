@@ -2,6 +2,7 @@
 # Makefile for USB Network drivers
 #
 
+obj-$(CONFIG_USB_NET_SIM7600) += sim7500_sim7600_wwan.o
 obj-$(CONFIG_USB_CATC)		+= catc.o
 obj-$(CONFIG_USB_KAWETH)	+= kaweth.o
 obj-$(CONFIG_USB_PEGASUS)	+= pegasus.o
@@ -26,7 +27,7 @@ obj-$(CONFIG_USB_NET_RNDIS_HOST)	+= rndis_host.o
 obj-$(CONFIG_USB_NET_CDC_SUBSET_ENABLE)	+= cdc_subset.o
 obj-$(CONFIG_USB_NET_ZAURUS)	+= zaurus.o
 obj-$(CONFIG_USB_NET_MCS7830)	+= mcs7830.o
-obj-$(CONFIG_USB_USBNET)	+= usbnet.o
+obj-$(CONFIG_USB_USBNET)	+= usbnet.o sim7500_sim7600_wwan.o
 obj-$(CONFIG_USB_NET_INT51X1)	+= int51x1.o
 obj-$(CONFIG_USB_CDC_PHONET)	+= cdc-phonet.o
 obj-$(CONFIG_USB_NET_KALMIA)	+= kalmia.o
@@ -39,4 +40,3 @@ obj-$(CONFIG_USB_VL600)		+= lg-vl600.o
 obj-$(CONFIG_USB_NET_QMI_WWAN)	+= qmi_wwan.o
 obj-$(CONFIG_USB_NET_CDC_MBIM)	+= cdc_mbim.o
 obj-$(CONFIG_USB_NET_CH9200)	+= ch9200.o
-obj-$(CONFIG_USB_NET_SIM7600)   += sim7500_sim7600_wwan.o

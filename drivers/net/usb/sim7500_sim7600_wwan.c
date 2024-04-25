@@ -20,7 +20,6 @@
 #include <linux/usb/cdc.h>
 #include <linux/usb/usbnet.h>
 
-
 /* very simplistic detection of IPv4 or IPv6 headers */
 static bool possibly_iphdr(const char *data)
 {
@@ -119,7 +118,7 @@ static void simcom_wwan_unbind(struct usbnet *dev, struct usb_interface *intf)
 #ifdef CONFIG_PM
 static int simcom_wwan_suspend(struct usb_interface *intf, pm_message_t message)
 {
-	struct usbnet *dev = usb_get_intfdata(intf);
+	//struct usbnet *dev = usb_get_intfdata(intf);
 	int ret;
 
 	ret = usbnet_suspend(intf, message);
@@ -132,12 +131,12 @@ err:
 
 static int simcom_wwan_resume(struct usb_interface *intf)
 {
-	struct usbnet *dev = usb_get_intfdata(intf);
+	//struct usbnet *dev = usb_get_intfdata(intf);
 	int ret = 0;
 	
 	ret = usbnet_resume(intf);
 
-err:
+//err:
 	return ret;
 }
 #endif
