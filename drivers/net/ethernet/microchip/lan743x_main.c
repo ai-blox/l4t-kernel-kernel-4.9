@@ -17,8 +17,12 @@
 #include <linux/iopoll.h>
 #include <linux/crc16.h>
 #include <linux/version.h>
+#include <linux/of.h>
+#include <linux/i2c.h>
 #include "lan743x_main.h"
 #include "lan743x_ethtool.h"
+
+#include <linux/nvmem-consumer.h>
 
 static void lan743x_pci_cleanup(struct lan743x_adapter *adapter)
 {
@@ -2947,6 +2951,7 @@ return_error:
 	return ret;
 }
 
+
 /* lan743x_pcidev_probe - Device Initialization Routine
  * @pdev: PCI device information struct
  * @id: entry in lan743x_pci_tbl
@@ -2963,8 +2968,10 @@ static int lan743x_pcidev_probe(struct pci_dev *pdev,
 	struct lan743x_adapter *adapter = NULL;
 	struct net_device *netdev = NULL;
 	
-	const unsigned char mac_address[] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF};
-	const void *mac_addr = mac_address;//toussi
+	const u8 *mac_addr = 0;
+
+	struct nvmem_cell *cell;
+	size_t len;
 
 	int ret = -ENODEV;
 
@@ -2983,11 +2990,15 @@ static int lan743x_pcidev_probe(struct pci_dev *pdev,
 	
 	netdev->mtu = LAN743X_MAX_FRAME_SIZE;
 
-	//mac_addr = of_get_mac_address(pdev->dev.of_node);
-	//toussi
+	cell = of_nvmem_cell_get(pdev->dev.of_node, "mac-address");
+	
+	if (!IS_ERR(cell)) {
+		mac_addr = nvmem_cell_read(cell, &len); 
+		nvmem_cell_put(cell); 
 
-	if (!IS_ERR(mac_addr))
-		ether_addr_copy(adapter->mac_address, mac_addr);
+		if (!IS_ERR(mac_addr))
+			ether_addr_copy(adapter->mac_address, mac_addr);
+	}
 
 	ret = lan743x_pci_init(adapter, pdev);
 	if (ret)
