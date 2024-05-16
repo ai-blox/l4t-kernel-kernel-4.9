@@ -3423,7 +3423,7 @@ chk_reserv(info, port);
 	l_reserv->ticks = jiffies - l_reserv->ticks;
 	if (l_reserv->ticks < 100)
 dbg_msg(" ?! ");
-dbg_msg(" t:%u"NL, l_reserv->ticks * 10 / 1000);
+dbg_msg(" t:%lu"NL, l_reserv->ticks * 10 / 1000);
 
 	/* Check if a talker reservation is using bandwidth. */
 	t_reserv = srp_find_reserv(&info->declared, listener->id, SRP_TALKER);
@@ -4108,7 +4108,7 @@ talker->FailureCode);
 	reserv->ticks = jiffies - reserv->ticks;
 	if (reserv->ticks < 100)
 dbg_msg(" ?! ");
-dbg_msg(" t:%u"NL, reserv->ticks * 10 / 1000);
+dbg_msg(" t:%lu"NL, reserv->ticks * 10 / 1000);
 
 	/* No listener propagation if no talker. */
 	l_reserv = srp_find_reserv(&info->declared, talker->id, SRP_LISTENER);

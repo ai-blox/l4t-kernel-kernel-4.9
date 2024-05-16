@@ -90,7 +90,7 @@ static void *iba_pre_cmd(struct ksz_iba_info *info, u16 code)
 	struct iba_frame *iba = info->frame;
 
 if (info->respid != info->seqid) {
-dbg_msg(" pre %x %x; %x; %x %x"NL, info->respid, info->seqid, code,
+dbg_msg(" pre %x %x; %x; %lx %lx"NL, info->respid, info->seqid, code,
 last_iba_jiffies, jiffies);
 dbg_iba = 1;
 }

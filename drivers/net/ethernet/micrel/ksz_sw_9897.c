@@ -35,6 +35,13 @@
 
 #define MAX_SYSFS_BUF_SIZE		(4080 - 80)
 
+#if 0
+#ifdef dbg_msg
+#undef dbg_msg
+#endif
+#define dbg_msg printk
+#endif
+
 enum {
 	PROC_SW_INFO,
 	PROC_SW_VERSION,
@@ -13619,7 +13626,7 @@ dbg_msg(" 2 vid: %x"NL, vlan_tci);
 			return dev;
 		if (memcmp(data, ipv6_neigh_mcast, 3)) {
 			if (memcmp(data, last_addr, 6)) {
-dbg_msg("%02x:%02x:%02x:%02x:%02x:%02x  %d=%d %x"NL,
+dbg_msg("%02x:%02x:%02x:%02x:%02x:%02x  %d=%ld %x"NL,
 data[0], data[1], data[2], data[3], data[4], data[5], *port, len, ports);
 				memcpy(last_addr, data, 6);
 			}
