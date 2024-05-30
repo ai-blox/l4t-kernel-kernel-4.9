@@ -178,6 +178,7 @@
 #define SW_PLL_POWER_DOWN		(1 << 5)
 #define SW_POWER_DOWN_MODE		0x3
 #define SW_POWER_DOWN_S			3
+#define SW_NORMAL_OPERATION		0
 #define SW_ENERGY_DETECTION		1
 #define SW_SOFT_POWER_DOWN		2
 

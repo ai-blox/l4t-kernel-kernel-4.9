@@ -517,6 +517,11 @@ struct ksz_sw_reg_ops {
 	int (*g_hsr_hw)(struct ksz_sw *sw, struct ksz_hsr_table *hsr);
 	u32 (*stop_hsr_hw)(struct ksz_sw *sw);
 #endif
+
+#ifdef CONFIG_PM_SLEEP
+	void (*pm_suspend)(struct ksz_sw *sw);
+	void (*pm_resume)(struct ksz_sw *sw);
+#endif
 };
 
 struct ksz_sw_net_ops {

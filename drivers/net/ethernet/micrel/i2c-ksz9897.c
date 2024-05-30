@@ -481,6 +481,11 @@ static struct ksz_sw_reg_ops sw_reg_ops = {
 	.g_hsr_hw		= sw_g_hsr_hw,
 	.stop_hsr_hw		= sw_stop_hsr_hw,
 #endif
+
+#ifdef CONFIG_PM_SLEEP
+	.pm_suspend = sw_pm_suspend,
+	.pm_resume = sw_pm_resume,
+#endif
 };
 
 /* -------------------------------------------------------------------------- */
@@ -512,6 +517,7 @@ static int ksz9897_probe(struct i2c_client *i2c,
 	priv->sw.reg = &sw_reg_ops;
 
 	priv->irq = i2c->irq;
+	i2c_set_clientdata(i2c, priv);
 
 	return ksz_probe(priv);
 }
@@ -568,6 +574,39 @@ static const struct of_device_id ksz9897_dt_ids[] = {
 MODULE_DEVICE_TABLE(of, ksz9897_dt_ids);
 #endif
 
+#ifdef CONFIG_PM_SLEEP
+static int ksz9897_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct sw_priv *priv = i2c_get_clientdata(client);
+	struct ksz_sw *sw = &priv->sw;
+
+	sw->reg->pm_suspend(sw);
+
+	return 0;
+}
+
+static int ksz9897_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct sw_priv *priv = i2c_get_clientdata(client);
+	struct ksz_sw *sw = &priv->sw;
+
+	sw->reg->pm_resume(sw);
+
+	return 0;
+}
+
+static const struct dev_pm_ops ksz9897_pm = {
+	SET_SYSTEM_SLEEP_PM_OPS(ksz9897_suspend, ksz9897_resume)
+};
+
+#define KSZ9897_PM_OPS (&ksz9897_pm)
+
+#else
+#define KSZ9897_PM_OPS NULL
+#endif
+
 static struct i2c_driver ksz9897_driver = {
 	.driver = {
 		.name	= I2C_SWITCH_NAME,
@@ -575,6 +614,7 @@ static struct i2c_driver ksz9897_driver = {
 #ifdef CONFIG_OF
 		.of_match_table = of_match_ptr(ksz9897_dt_ids),
 #endif
+		.pm		= KSZ9897_PM_OPS,
 	},
 	.probe		= ksz9897_probe,
 	.remove		= ksz9897_remove,

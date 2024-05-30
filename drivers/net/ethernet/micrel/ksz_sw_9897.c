@@ -35,7 +35,7 @@
 
 #define MAX_SYSFS_BUF_SIZE		(4080 - 80)
 
-#if 0
+#if 1
 #ifdef dbg_msg
 #undef dbg_msg
 #endif
@@ -17564,6 +17564,71 @@ static void sw_init_phydev(struct ksz_sw *sw, struct phy_device *phydev)
 	phydev->duplex = (info->duplex == 2);
 	phydev->pause = 1;
 }  /* sw_init_phydev */
+
+#ifdef CONFIG_PM_SLEEP
+static void sw_pm_suspend(struct ksz_sw *sw)
+{
+	struct sw_priv *ks = sw->dev;
+	uint port;
+
+	dbg_msg("%s: Go to suspend"NL, __func__);
+
+	ksz_stop_timer(&ks->monitor_timer_info);
+	ksz_stop_timer(&ks->mib_timer_info);
+	flush_work(&ks->mib_read);
+	cancel_delayed_work_sync(&ks->link_read);
+
+	sw->ops->acquire(sw);
+	/* Stop traffic on the switch  */
+	sw_cfg(sw, REG_SW_OPERATION, SW_START, 0);
+
+	/* Port-based power down */
+	for (port = 0; port < sw->port_cnt; port++) {
+		if (port < sw->phy_port_cnt)
+			port_cfg_power(sw, port, true);
+	}
+
+	/* Global soft power down */
+	sw_w_shift(sw, REG_SW_POWER_MANAGEMENT_CTRL, 
+				SW_POWER_DOWN_MODE, 
+				SW_POWER_DOWN_S, 
+				SW_SOFT_POWER_DOWN
+				);
+	sw->ops->release(sw);
+}
+
+static void sw_pm_resume(struct ksz_sw *sw)
+{
+	struct sw_priv *ks = sw->dev;
+	uint port;
+
+	dbg_msg("%s: Go to resume"NL, __func__);
+
+	sw->ops->acquire(sw);
+	/* Port-based power up */
+	for (port = 0; port < sw->port_cnt; port++) {
+		if (port < sw->phy_port_cnt)
+			port_cfg_power(sw, port, false);
+	}
+
+	/* Global soft power up */
+	sw_w_shift(sw, REG_SW_POWER_MANAGEMENT_CTRL, 
+				SW_POWER_DOWN_MODE, 
+				SW_POWER_DOWN_S, 
+				SW_NORMAL_OPERATION
+				);
+
+	/* sw_setup() has code sw_cfg(sw, REG_SW_OPERATION, SW_START, 1) to start the switch */
+	sw_setup(sw);
+	sw->ops->release(sw);
+
+	ksz_start_timer(&ks->mib_timer_info, ks->mib_timer_info.period);
+	if (!(sw->multi_dev & 1) && !sw->stp)
+		ksz_start_timer(&ks->monitor_timer_info,
+			ks->monitor_timer_info.period * 10);
+
+}
+#endif
 
 static int sw_device_present;
 
