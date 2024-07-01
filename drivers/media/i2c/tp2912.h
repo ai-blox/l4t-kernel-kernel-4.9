@@ -19,6 +19,16 @@
 #ifndef _TP219_H_
 #define _TP219_H_
 
+enum {
+	TP2801A=0,
+	TP2801B,
+	TP2803,
+	TP2910,
+	TP2912,
+	TP2912B,
+	TP2915
+};
+
 /* Clock Control Register */
 #define REG_CLK 0x00
 
