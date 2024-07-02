@@ -28,7 +28,9 @@
 #include "tp2912.h"
 
 static int debug;
+static bool diff_mode = false;
 module_param(debug, int, 0644);
+module_param(diff_mode, bool, 0644);
 MODULE_PARM_DESC(debug, "debug level (0-2)");
 MODULE_DESCRIPTION("TP2912 - Untra High Definition HD-TVI Video Encoder driver");
 MODULE_AUTHOR("Nari");
@@ -69,6 +71,33 @@ static int __attribute__((unused)) tp2912_write (struct tp2912_priv *priv, uint8
 	}
 
 	return 0;
+}
+
+static int tp2912_modify(struct tp2912_priv *priv, uint8_t reg, 
+							uint8_t clear, uint8_t set)
+{
+	int ret;
+	struct v4l2_subdev *sd = &priv->sd;
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	uint8_t val;
+
+	ret = tp2912_read(priv, reg);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to read register 0x%08x. Error = %d\n", __func__, __LINE__, reg, ret);
+		return ret;
+	}
+
+	val = (uint8_t)ret;
+	val &= ~clear;
+	val |= set;
+
+	ret = tp2912_write(priv, reg, val);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write register 0x%08x. Error = %d\n", __func__, __LINE__, reg, ret);
+		return ret;
+	}
+
+	return ret;
 }
 
 static int tp2912_write_block (struct tp2912_priv *priv, uint8_t *data)
@@ -245,6 +274,75 @@ static int tp2912_startup_pll(struct tp2912_priv *priv){
 	return ret;
 }
 
+static int tp2912_set_output_mode(struct tp2912_priv *priv) {
+	struct v4l2_subdev *sd = &priv->sd;
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	int ret = 0;
+
+	if((priv->chipid == TP2912) || (priv->chipid == TP2912B) || (priv->chipid == TP2915)){
+		ret = tp2912_modify(priv, REG_TXDRIVER_3, 
+						0, 
+						(1 << 3) /* voltage mode */
+						);
+		if(ret < 0) {
+			v4l_err(client, "%s (line %d): failed to write register REG_TXDRIVER_3. Error = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+
+		if(diff_mode == true){
+			ret = tp2912_modify(priv, REG_TXDRIVER_3, 
+										0, 
+										(1 << 7) /* differential output mode */
+								);
+			if(ret < 0) {
+				v4l_err(client, "%s (line %d): failed to write register REG_TXDRIVER_3. Error = %d\n", __func__, __LINE__, ret);
+				return ret;
+			}
+
+			if(priv->chipid != TP2912) {
+				ret = tp2912_write(priv, REG_PTZ_2, 0x90);
+				if(ret < 0) {
+					v4l_err(client, "%s (line %d): failed to write register REG_PTZ_2. Error = %d\n", __func__, __LINE__, ret);
+					return ret;
+				}
+
+				/* Hidden register */
+				ret = tp2912_write(priv, 0x45, 0x40);
+				if(ret < 0) {
+					v4l_err(client, "%s (line %d): failed to write register 0x45. Error = %d\n", __func__, __LINE__, ret);
+					return ret;
+				}
+			}
+		} else {
+			ret = tp2912_modify(priv, REG_TXDRIVER_3, 
+										(1 << 7), /* Single-ended output mode */
+										0
+							);
+			if(ret < 0) {
+				v4l_err(client, "%s (line %d): failed to write register REG_TXDRIVER_3. Error = %d\n", __func__, __LINE__, ret);
+				return ret;
+			}
+		}
+	} else if(priv->chipid == TP2910){
+		ret = tp2912_write(priv, REG_TXDRIVER_3, 0x08);
+		if(ret < 0) {
+			v4l_err(client, "%s (line %d): failed to write register REG_TXDRIVER_3. Error = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+
+		ret = tp2912_write(priv, REG_TXDRIVER_2, 0x05);
+		if(ret < 0) {
+			v4l_err(client, "%s (line %d): failed to write register REG_TXDRIVER_2. Error = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+	} else {
+		v4l_err(client, "%s (line %d): Unkown chip id\n", __func__, __LINE__);
+		return -ENODEV;
+	}
+
+	return ret;
+}
+
 static int tp2912_init(struct tp2912_priv *priv) {
 	int ret = 0;
 	struct v4l2_subdev *sd = &priv->sd;
@@ -299,6 +397,7 @@ static int tp2912_init(struct tp2912_priv *priv) {
 
 		mdelay(20);
 
+		/* Hidden register */
 		if((priv->chipid == TP2801B) || (priv->chipid == TP2803)) {
 			ret = tp2912_write(priv, 0x43, 0x47);
 			if(ret < 0) {
@@ -306,6 +405,12 @@ static int tp2912_init(struct tp2912_priv *priv) {
 				return ret;
 			}
 		}
+	}
+
+	ret = tp2912_set_output_mode(priv);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to set output mode. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
 	}
 
 	return ret;
