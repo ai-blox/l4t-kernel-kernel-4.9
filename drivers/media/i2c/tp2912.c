@@ -22,8 +22,11 @@
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/videodev2.h>
+#include <linux/v4l2-dv-timings.h>
+
 #include <media/v4l2-device.h>
 #include <media/v4l2-ctrls.h>
+#include <media/v4l2-dv-timings.h>
 
 #include "tp2912.h"
 
@@ -43,6 +46,7 @@ struct tp2912_priv {
 	struct v4l2_subdev sd;
 	struct media_pad pad;
 	struct v4l2_ctrl_handler hdl;
+	struct v4l2_dv_timings dv_timings;
 	bool power_on;
 };
 
@@ -436,13 +440,84 @@ static int tp2912_init(struct tp2912_priv *priv) {
 	return ret;
 }
 
-static int tp2912_s_std_output(struct v4l2_subdev *sd, v4l2_std_id std)
+static const struct v4l2_dv_timings_cap tp2912_timings_cap = {
+	.type = V4L2_DV_BT_656_1120,
+	/* keep this initialization for compatibility with GCC < 4.4.6 */
+	.reserved = { 0 },
+	V4L2_INIT_BT_TIMINGS(640, TP2912_MAX_WIDTH, 
+		350, TP2912_MAX_HEIGHT,
+		TP2912_MIN_PIXELCLOCK, TP2912_MAX_PIXELCLOCK,
+		V4L2_DV_BT_STD_CEA861 | V4L2_DV_BT_STD_DMT | V4L2_DV_BT_STD_GTF | V4L2_DV_BT_STD_CVT,
+		V4L2_DV_BT_CAP_PROGRESSIVE | V4L2_DV_BT_CAP_INTERLACED | V4L2_DV_BT_CAP_CUSTOM)
+};
+
+static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
+			       struct v4l2_dv_timings *timings)
 {
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct tp2912_priv *priv = sd_to_priv(sd);
+	struct v4l2_bt_timings *bt = &timings->bt;
+	u32 fps;
+	int ret;
+
+	v4l2_dbg(1, debug, sd, "%s:\n", __func__);
+
+	if (!v4l2_valid_dv_timings(timings, &tp2912_timings_cap, NULL, NULL)) {
+		v4l_err(client, "%s (line %d): timing is not valid\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	/* Fill the optional fields .standards and .flags in struct v4l2_dv_timings
+	   if the format is one of the CEA or DMT timings. */
+	v4l2_find_dv_timings_cap(timings, &tp2912_timings_cap, 0, NULL, NULL);
+
+	priv->dv_timings = *timings;
+
+	/* set hsync, vsync polarity */
+	ret = tp2912_modify(priv, REG_EX_SYNCIN,
+		((bt->polarities & V4L2_DV_HSYNC_POS_POL) ? BIT(6) : 0) | ((bt->polarities & V4L2_DV_VSYNC_POS_POL) ? BIT(7) : 0),
+		((bt->polarities & V4L2_DV_HSYNC_POS_POL) ? 0 : BIT(6)) | ((bt->polarities & V4L2_DV_VSYNC_POS_POL) ? 0 : BIT(7))) ;
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write register REG_EX_SYNCIN. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
+	fps = (u32)bt->pixelclock / (V4L2_DV_BT_FRAME_WIDTH(bt) * V4L2_DV_BT_FRAME_HEIGHT(bt));
+	switch (fps) {
+	case 24:
+		break;
+	case 25:
+		break;
+	case 30:
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int tp2912_g_dv_timings(struct v4l2_subdev *sd,
+				struct v4l2_dv_timings *timings)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct tp2912_priv *priv = sd_to_priv(sd);
+
+	v4l2_dbg(1, debug, client, "%s:\n", __func__);
+
+	if (!timings) {
+		v4l_err(client, "%s (line %d): timing == NULL! \nn", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	*timings = priv->dv_timings;
+
 	return 0;
 }
 
 static const struct v4l2_subdev_video_ops tp2912_video_ops = {
-	.s_std_output = tp2912_s_std_output,
+	.s_dv_timings = tp2912_s_dv_timings,
+	.g_dv_timings = tp2912_g_dv_timings,
 };
 
 static int tp2912_log_status(struct v4l2_subdev *sd)
@@ -461,9 +536,9 @@ static int tp2912_g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *r
 	int ret;
 
 
-	ret = tp2912_read(priv, reg);
+	ret = tp2912_read(priv, reg->reg);
 	if(ret < 0) {
-		v4l_err(client, "%s (line %d): failed to read register 0x%08x. Error = %d\n", __func__, __LINE__, reg->reg, ret);
+		v4l_err(client, "%s (line %d): failed to read register 0x%08x. Error = %d\n", __func__, __LINE__, (uint8_t)reg->reg, ret);
 		return ret;
 	}
 
@@ -482,7 +557,7 @@ static int tp2912_s_register(struct v4l2_subdev *sd, const struct v4l2_dbg_regis
 
 	ret = tp2912_write(priv, reg->reg, reg->val);
 	if(ret < 0) {
-		v4l_err(client, "%s (line %d): failed to write register at 0x%08x. Error = %d\n", __func__, __LINE__, reg->reg, ret);
+		v4l_err(client, "%s (line %d): failed to write register at 0x%08x. Error = %d\n", __func__, __LINE__, (uint8_t)reg->reg, ret);
 		return ret;
 	}
 
@@ -525,16 +600,6 @@ static const struct v4l2_subdev_ops tp2912_ops = {
 	.video	= &tp2912_video_ops,
 };
 
-static const struct v4l2_ctrl_config tp2912_ctrl_diff_mode = {
-	.ops = &tp2912_ops,
-	.id = V4L2_CID_TP2912_DIFF_MODE,
-	.name = "Differential mode output",
-	.type = V4L2_CTRL_TYPE_BOOLEAN,
-	.min = false,
-	.max = true,
-	.step = 1,
-	.def = false,
-};
 
 static const char * const tp2912_test_pattern_menu[] = {
 	"Disabled",
@@ -547,6 +612,7 @@ static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
 		&container_of(ctrl->handler, struct tp2912_priv, hdl)->sd;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct tp2912_priv *priv = sd_to_priv(sd);
+	int ret = 0;
 
 	switch (ctrl->id) {
 		case V4L2_CID_GAIN:
@@ -570,11 +636,22 @@ static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
 			return -EINVAL;
 	}
 
-	return -EINVAL;
+	return ret;
 }
 
 static const struct v4l2_ctrl_ops tp2912_ctrl_ops = {
 	.s_ctrl = tp2912_s_ctrl,
+};
+
+static const struct v4l2_ctrl_config tp2912_ctrl_diff_mode = {
+	.ops = &tp2912_ctrl_ops,
+	.id = V4L2_CID_TP2912_DIFF_MODE,
+	.name = "Differential mode output",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = false,
+	.max = true,
+	.step = 1,
+	.def = false,
 };
 
 static int tp2912_probe(struct i2c_client *client, 

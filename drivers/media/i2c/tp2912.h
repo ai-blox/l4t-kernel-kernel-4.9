@@ -20,7 +20,7 @@
 #define _TP219_H_
 
 enum {
-	TP2801A=0,
+	TP2801A = 0,
 	TP2801B,
 	TP2803,
 	TP2910,
@@ -29,7 +29,17 @@ enum {
 	TP2915
 };
 
+enum {
+	AHD = 0,
+	TVI
+};
+
 #define V4L2_CID_TP2912_DIFF_MODE		(V4L2_CID_DV_CLASS_BASE + 0x1000)
+
+#define TP2912_MAX_WIDTH 1920
+#define TP2912_MAX_HEIGHT 1200
+#define TP2912_MIN_PIXELCLOCK 20000000
+#define TP2912_MAX_PIXELCLOCK 225000000
 
 /* Clock Control Register */
 #define REG_CLK 0x00
@@ -427,5 +437,810 @@ enum {
 /* DEVICE_ID Register */
 #define REG_DEVID_HIGH 0xFE
 #define REG_DEVID_LOW 0xFF
+
+/* TP2912, TP2912B and TP2915 use the same data set for AHD1080P */
+uint8_t  TP2912_AHD1080P_DataSet[] = {
+	/* Registers     1080P30       1080P25   */
+	REG_MODE,         0x83,         0x83,
+	REG_BSTLN,        0x4a,         0x4a,
+	REG_VDTH0_LOW,    0x90,         0x90,
+	REG_SYLO,         0x94,         0x94,
+	REG_SYHI,         0x94,         0x94,
+	REG_VDTH0_HIGH,   0x00,         0x00,
+	REG_H0TVS_LOW,    0x04,         0x04,
+	REG_H0TVD_LOW,    0xf0,         0xf0,
+	REG_H0TBST_HIGH,  0x98,         0x98,
+	REG_HLEN_1,       0x98,         0x50,
+	REG_HINDLY_HIGH,  0x08,         0x1a,
+	REG_HINDLY_LOW,   0x2a,         0xe2,
+	REG_VINDLY,       0x00,         0x00,
+	REG_YLMHI,        0xeb,         0xeb,
+	REG_CLMHI,        0xf0,         0xf0,
+	REG_CLMLO,        0x10,         0x10,
+	REG_UGAIN,        0xa6,         0xa6,
+	REG_VGAIN,        0xe6,         0xe6,
+	REG_BGAIN,        0xf8,         0xf8,
+	REG_FS_4,         0x29,         0x29,
+	REG_FS_3,         0x65,         0x61,
+	REG_FS_2,         0x78,         0xbe,
+	REG_FS_1,         0x16,         0xd6,
+	REG_MISC2,        0x37,         0x37,
+	REG_TXDRIVER_1,   0x50,         0x50
+};
+
+/* TP2912B and TP2915 use the same data set for AHD720P */
+uint8_t  TP2912_AHD720P_DataSet[] = {
+	/*               |-----------------------------------------------------|-----------------------------------------------------|
+	 *               |   TP2912                                            |            TP2912B                                  |
+	 *|--------------|----------|------------|--------------|--------------|---------- |------------|---------------|------------|
+	 *| Registers    | 720P30   |    720P25  |   720P30_36M |  720P25_36M  | 720P30    |    720P25  |    720P30_36M |   720P25   |
+     *|--------------|----------|------------|--------------|--------------|---------- |------------|---------------|------------| */
+	REG_MODE,         0x8b,         0x8b,        0x8b,         0x8b,         0x8b,         0x8b,        0x8b,         0x8b,
+	REG_ENC_MODE,     0x42,         0x42,        0x42,         0x42,         0x42,         0x42,        0x42,         0x42,
+	REG_BSTLN,        0x70,         0x70,        0x6c,         0x6c,         0x70,         0x70,        0x6c,         0x6c,
+	REG_VDTH0_LOW,    0x7a,         0x7a,        0x76,         0x76,         0x7a,         0x7a,        0x76,         0x76,
+	REG_SYLO,         0x7a,         0x7a,        0x76,         0x76,         0x7a,         0x7a,        0x76,         0x76,
+	REG_SYHI,         0x7a,         0x7a,        0x76,         0x76,         0x7a,         0x7a,        0x76,         0x76,
+	REG_VDTH0_HIGH,   0x00,         0x00,        0x00,         0x00,         0x00,         0x00,        0x00,         0x00,
+	REG_H0TVS_LOW,    0x04,         0x04,        0x04,         0x04,         0x04,         0x04,        0x04,         0x04,
+	REG_H0TVD_LOW,    0xf0,         0xf0,        0xf0,         0xf0,         0xf0,         0xf0,        0xf0,         0xf0,
+	REG_H0TBST_HIGH,  0x86,         0x86,        0x82,         0x82,         0x86,         0x86,        0x82,         0x82,
+	REG_HLEN_1,       0x72,         0xbc,        0x40,         0x80,         0x72,         0xbc,        0x40,         0x80,
+	REG_HINDLY_HIGH,  0x06,         0x17,        0x06,         0x17,         0x06,         0x17,        0x06,         0x17,
+	REG_HINDLY_LOW,   0x68,         0xb0,        0x3e,         0x80,         0x68,         0xb0,        0x3e,         0x80,
+	REG_VINDLY,       0x00,         0x00,        0x00,         0x00,         0x00,         0x00,        0x00,         0x00,
+	REG_YLMHI,        0xeb,         0xeb,        0xeb,         0xeb,         0xeb,         0xeb,        0xeb,         0xeb,
+	REG_CLMHI,        0xf0,         0xf0,        0xf0,         0xf0,         0xf0,         0xf0,        0xf0,         0xf0,
+	REG_CLMLO,        0x10,         0x10,        0x10,         0x10,         0x10,         0x10,        0x10,         0x10,
+	REG_UGAIN,        0xa6,         0xa6,        0xa6,         0xa6,         0xa6,         0xa6,        0xa6,         0xa6,
+	REG_VGAIN,        0xe6,         0xe6,        0xe6,         0xe6,         0xe6,         0xe6,        0xe6,         0xe6,
+	REG_BGAIN,        0xf8,         0xf8,        0xf8,         0xf8,         0xf8,         0xf8,        0xf8,         0xf8,
+	REG_FS_4,         0x27,         0x27,        0x28,         0x28,         0x27,         0x27,        0x28,         0x28,
+	REG_FS_3,         0x72,         0x88,        0xae,         0xc4,         0x72,         0x88,        0xae,         0xc4,
+	REG_FS_2,         0x80,         0x04,        0x14,         0x44,         0x80,         0x04,        0x14,         0x44,
+	REG_FS_1,         0x77,         0x23,        0x7a,         0x44,         0x77,         0x23,        0x7a,         0x44,
+	REG_MISC2,        0x37,         0x37,        0x37,         0x37,         0x37,         0x37,        0x37,         0x37,
+	REG_TXDRIVER_1,   0x90,         0x90,        0x90,         0x90,         0x10,         0x10,        0x10,         0x10
+};
+
+uint8_t  TP2912_AHD4M_DataSet[] = {
+	/*             |------------------------|--------------------------|
+	 *             |         TP2912         |           TP2912B        |
+	 *|------------|-----------|------------|--------------|-----------|
+	 *| Registers  |  4M30     |    4M25    |    4M30      |   4M25    |
+	 *|------------|-----------|------------|--------------|-----------|*/
+	REG_MODE,         0x8b,         0x8b,        0x8b,         0x8b,
+	REG_ENC_MODE,     0x52,         0x52,        0x52,         0x52,
+	REG_BSTLN,        0xd0,         0xd0,        0xd0,         0xd0,
+	REG_MISC1,        0x45,         0x45,        0x46,         0x46,
+	REG_VDTH0_LOW,    0xd0,         0xd0,        0xd0,         0xd0,
+	REG_SYLO,         0x98,         0x98,        0x98,         0x98,
+	REG_SYHI,         0x98,         0x98,        0x98,         0x98,
+	REG_VDTH0_HIGH,   0x12,         0x12,        0x12,         0x12,
+	REG_H0TVS_LOW,    0x04,         0x04,        0x04,         0x04,
+	REG_H0TVD_LOW,    0x04,         0x04,        0x04,         0x04,
+	REG_H0TBST_HIGH,  0xb0,         0xb0,        0xb0,         0xb0,
+	REG_HLEN_1,       0xe4,         0x78,        0xe4,         0x78,
+	REG_HINDLY_HIGH,  0x1c,         0x3f,        0x1c,         0x3f,
+	REG_HINDLY_LOW,   0x12,         0xa6,        0x12,         0xa6,
+	REG_VINDLY,       0x0a,         0x0a,        0x0a,         0x0a,
+	REG_CLMHI,        0xf0,         0xf0,        0xf0,         0xf0,
+	REG_CLMLO,        0x10,         0x10,        0x10,         0x10,
+	REG_UGAIN,        0x72,         0x72,        0x72,         0x72,
+	REG_VGAIN,        0x9d,         0x9d,        0x9d,         0x9d,
+	REG_BGAIN,        0x80,         0x80,        0x80,         0x80,
+	REG_FS_4,         0x36,         0x36,        0x36,         0x36,
+	REG_FS_3,         0x50,         0x53,        0x50,         0x53,
+	REG_FS_2,         0x0e,         0xc8,        0x0e,         0xc8,
+	REG_FS_1,         0xe5,         0x25,        0xe5,         0x25,
+	REG_VLEN_HIGH,    0xa5,         0xa5,        0xa5,         0xa5,
+	REG_VLEN_LOW,     0xdc,         0xdc,        0xdc,         0xdc,
+	REG_HACT_LOW,     0x00,         0x00,        0x00,         0x00,
+	REG_VACT_HIGH,    0x55,         0x55,        0x55,         0x55,
+	REG_VACT_LOW,     0xa0,         0xa0,        0xa0,         0xa0,
+	REG_MISC2,        0x36,         0x36,        0x36,         0x36,
+	REG_MISC3,        0xd7,         0xd7,        0xd7,         0xd7,
+	REG_TXDRIVER_1,   0x10,         0x10,        0x90,         0x90
+};
+
+uint8_t  TP2910_AHD1080P_DataSet[] = {
+	/* Registers     1080P30       1080P25   */
+	REG_BSTLN,        0x4a,         0x4a,
+	REG_VDTH0_LOW,    0xc0,         0xc0,
+	REG_SYLO,         0x94,         0x94,
+	REG_SYHI,         0x94,         0x94,
+	REG_VDTH0_HIGH,   0x10,         0x10,
+	REG_H0TVS_LOW,    0x02,         0x02,
+	REG_H0TVD_LOW,    0x64,         0x64,
+	REG_H0TBST_HIGH,  0x94,         0x94,
+	REG_HLEN_1,       0x98,         0x50,
+	REG_HINDLY_HIGH,  0x08,         0x1a,
+	REG_HINDLY_LOW,   0x28,         0xe0,
+	REG_VINDLY,       0x00,         0x00,
+	REG_FS_4,         0x29,         0x29,
+	REG_FS_3,         0x65,         0x61,
+	REG_FS_2,         0x78,         0x78,
+	REG_FS_1,         0x16,         0x16,
+	REG_MISC2,        0x35,         0x35,
+	REG_TXDRIVER_1,   0x00,         0x00
+};
+
+uint8_t  TP2910_AHD720P_DataSet[] = {
+	/* Registers     720P30       720P25   */
+	REG_MODE,         0x8f,         0x9f,
+	REG_BSTLN,        0x60,         0xb8,
+	REG_SYLO,         0x80,         0x8c,
+	REG_VDTH0_HIGH,   0x05,         0x15,
+	REG_H0TBST_HIGH,  0x80,         0xbc,
+	REG_HLEN_1,       0x72,         0x17,
+	REG_HINDLY_HIGH,  0x06,         0xcd,
+	REG_FS_4,         0x27,         0x27,
+	REG_FS_3,         0x72,         0x88,
+	REG_FS_2,         0x80,         0x04,
+	REG_FS_1,         0x77,         0x23,
+	REG_MISC2,        0x35,         0x35,
+	REG_TXDRIVER_1,   0x10,         0x10
+};
+
+uint8_t  TP2912_TVI1080P_DataSet[] = {
+	/* Registers     1080P30       1080P25   */
+	REG_MODE,         0x83,         0x93,
+	REG_ENC_MODE,     0x42,         0x42,
+	REG_BSTLN,        0x40,         0x40,
+	REG_VDTH0_LOW,    0x58,         0x10,
+	REG_SYLO,         0x2c,         0x2c,
+	REG_SYHI,         0x2c,         0x2c,
+	REG_VDTH0_HIGH,   0x00,         0x20,
+	REG_H0TVS_LOW,    0xc0,         0xc0,
+	REG_H0TVD_LOW,    0xc0,         0xc0,
+	REG_HLEN_1,       0x98,         0x50,
+	REG_HINDLY_HIGH,  0x08,         0x2a,
+	REG_HINDLY_LOW,   0x6c,         0x24,
+	REG_VINDLY,       0x04,         0x04,
+	REG_UGAIN,        0xa6,         0xa6,
+	REG_VGAIN,        0xe6,         0xe6,
+	REG_BGAIN,        0xf8,         0xf8,
+	REG_FS_4,         0x48,         0x48,
+	REG_FS_3,         0xbb,         0xbb,
+	REG_FS_2,         0x2e,         0x2e,
+	REG_FS_1,         0x8b,         0x8b,
+	REG_TXDRIVER_1,   0x50,         0x50
+};
+
+uint8_t  TP2912_TVI720P_DataSet[] = {
+	/* Registers     720P60       720P50         720P30V2       720P25V2 */
+	REG_MODE,         0x8b,         0x9b,         0x8b,          0x9b,
+	REG_ENC_MODE,     0x42,         0x42,         0x4a,          0x4a,
+	REG_BSTLN,        0x46,         0x46,         0x46,          0x46,
+	REG_MISC1,        0x41,         0x41,         0x41,          0x41,
+	REG_VDTH0_LOW,    0x6e,         0xb8,         0x6e,          0xb8,
+	REG_SYLO,         0x28,         0x28,         0x28,          0x28,
+	REG_SYHI,         0x28,         0x28,         0x28,          0x28,
+	REG_VDTH0_HIGH,   0x05,         0x15,         0x05,          0x05,
+	REG_H0TVS_LOW,    0x04,         0x04,         0x04,          0x04,
+	REG_H0TVD_LOW,    0x04,         0x04,         0x04,          0x04,
+	REG_H0TBST_HIGH,  0x28,         0x28,         0x28,          0x28,
+	REG_HLEN_1,       0x72,         0xbc,         0x72,          0xbc,
+	REG_HINDLY_HIGH,  0x06,         0x17,         0x06,          0x17,
+	REG_HINDLY_LOW,   0x83,         0xcd,         0x83,          0xcd,
+	REG_VINDLY,       0x05,         0x05,         0x05,          0x05,
+	REG_UGAIN,        0xa6,         0xa6,         0xa6,          0xa6,
+	REG_VGAIN,        0xe6,         0xe6,         0xe6,          0xe6,
+	REG_BGAIN,        0xf8,         0xf8,         0xf8,          0xf8,
+	REG_FS_4,         0x48,         0x48,         0x24,          0x24,
+	REG_FS_3,         0xbb,         0xbb,         0x5d,          0x5d,
+	REG_FS_2,         0x2e,         0x2e,         0x17,          0x17,
+	REG_FS_1,         0x8b,         0x8b,         0x45,          0x45,
+	REG_TXDRIVER_1,   0x50,         0x50,         0x90,          0x90
+};
+
+uint8_t TP2912_TVINTSC_DataSet[] = {
+	REG_MODE,         0x09,
+	REG_BSTLN,        0x24,
+	REG_MISC1,        0x81,
+	REG_VDTH0_LOW,    0x20,
+	REG_SYLO,         0x42,
+	REG_SYHI,         0x28,
+	REG_VDTH0_HIGH,   0x05,
+	REG_H0TVS_LOW,    0x04,
+	REG_H0TVD_LOW,    0x04,
+	REG_H0TBST_HIGH,  0x3c,
+	REG_HLEN_1,       0x5a,
+	REG_HINDLY_HIGH,  0x03,
+	REG_HINDLY_LOW,   0x16,
+	REG_VINDLY,       0x04,
+	REG_SYNHT,        0x2a,
+	REG_YGAIN,        0x77,
+	REG_UGAIN,        0xaa,
+	REG_VGAIN,        0xf0,
+	REG_BGAIN,        0xa9,
+	REG_FS_4,         0x48,
+	REG_FS_3,         0xbb,
+	REG_FS_2,         0x2e,
+	REG_FS_1,         0x8b,
+	REG_TXDRIVER_1,   0x90,
+	0x41,             0xc1,
+	REG_DAC,          0x8c
+};
+
+uint8_t TP2912_TVIPAL_DataSet[] = {
+	REG_MODE,         0x1a,
+	REG_ENC_MODE,     0x43,
+	REG_BSTLN,        0x20,
+	REG_MISC1,        0x81,
+	REG_VDTH0_LOW,    0x20,
+	REG_SYLO,         0x42,
+	REG_SYHI,         0x28,
+	REG_VDTH0_HIGH,   0x05,
+	REG_H0TVS_LOW,    0x04,
+	REG_H0TVD_LOW,    0x04,
+	REG_H0TBST_HIGH,  0x3c,
+	REG_HLEN_1,       0x60,
+	REG_HINDLY_HIGH,  0x03,
+	REG_HINDLY_LOW,   0x20,
+	REG_VINDLY,       0x04,
+	REG_BKLVL,        0x3f,
+	REG_SYNHT,        0x2c,
+	REG_YGAIN,        0x77,
+	REG_UGAIN,        0xaa,
+	REG_VGAIN,        0xf0,
+	REG_BGAIN,        0x76,
+	REG_FS_4,         0x48,
+	REG_FS_3,         0xbb,
+	REG_FS_2,         0x2e,
+	REG_FS_1,         0x8b,
+	REG_TXDRIVER_1,   0x90,
+	0x41,             0xc1,
+	REG_DAC,          0x8c
+};
+
+uint8_t TP2912_TVI8M15_DataSet[] = {
+	REG_MODE,         0x8b,
+	REG_ENC_MODE,     0x52,
+	REG_BSTLN,        0x78,
+	REG_MISC1,        0x45,
+	REG_VDTH0_LOW,    0x80,
+	REG_SYLO,         0x50,
+	REG_SYHI,         0x50,
+	REG_VDTH0_HIGH,   0x15,
+	REG_H0TVS_LOW,    0x00,
+	REG_H0TVD_LOW,    0x80,
+	REG_H0TBST_HIGH,  0x50,
+	REG_HLEN_1,       0x30,
+	REG_HINDLY_HIGH,  0x01,
+	REG_HINDLY_LOW,   0xaa,
+	REG_VINDLY,       0x08,
+	REG_UGAIN,        0x55,
+	REG_VGAIN,        0x76,
+	REG_BGAIN,        0x80,
+	REG_FS_4,         0x57,
+	REG_FS_3,         0x43,
+	REG_FS_2,         0x4e,
+	REG_FS_1,         0x02,
+	REG_VLEN_HIGH,    0xf8,
+	REG_VLEN_LOW,     0xca,
+	REG_HACT_LOW,     0x00,
+	REG_VACT_HIGH,    0x58,
+	REG_VACT_LOW,     0x70,
+	REG_MISC2,        0xb4,
+	REG_TXDRIVER_1,   0x10
+};
+
+uint8_t TP2912_TVI8M125_DataSet[] = {
+	REG_MODE,         0x8b,
+	REG_ENC_MODE,     0x52,
+	REG_BSTLN,        0x78,
+	REG_MISC1,        0x45,
+	REG_VDTH0_LOW,    0xe0,
+	REG_SYLO,         0x50,
+	REG_SYHI,         0x50,
+	REG_VDTH0_HIGH,   0x35,
+	REG_H0TVS_LOW,    0x00,
+	REG_H0TVD_LOW,    0x80,
+	REG_H0TBST_HIGH,  0x50,
+	REG_HLEN_1,       0xa0,
+	REG_HINDLY_HIGH,  0x44,
+	REG_HINDLY_LOW,   0x18,
+	REG_VINDLY,       0x08,
+	REG_UGAIN,        0x55,
+	REG_VGAIN,        0x76,
+	REG_BGAIN,        0x80,
+	REG_FS_4,         0x57,
+	REG_FS_3,         0x43,
+	REG_FS_2,         0x4e,
+	REG_FS_1,         0x02,
+	REG_VLEN_HIGH,    0xf8,
+	REG_VLEN_LOW,     0xca,
+	REG_HACT_LOW,     0x00,
+	REG_VACT_HIGH,    0x58,
+	REG_VACT_LOW,     0x70,
+	REG_MISC2,        0xb4,
+	REG_TXDRIVER_1,   0x10
+};
+
+uint8_t TP2912_TVI5M20_DataSet[] = {
+	REG_MODE,         0x8b,
+	REG_ENC_MODE,     0x52,
+	REG_BSTLN,        0x80,
+	REG_MISC1,        0x45,
+	REG_VDTH0_LOW,    0x80,
+	REG_SYLO,         0x50,
+	REG_SYHI,         0x50,
+	REG_VDTH0_HIGH,   0x21,
+	REG_H0TVS_LOW,    0xe0,
+	REG_H0TVD_LOW,    0x80,
+	REG_H0TBST_HIGH,  0x50,
+	REG_HLEN_1,       0xa6,
+	REG_HINDLY_HIGH,  0x3e,
+	REG_HINDLY_LOW,   0x00,
+	REG_VINDLY,       0x04,
+	REG_UGAIN,        0x55,
+	REG_VGAIN,        0x76,
+	REG_BGAIN,        0x80,
+	REG_FS_4,         0x57,
+	REG_FS_3,         0x7d,
+	REG_FS_2,         0x52,
+	REG_FS_1,         0x3b,
+	REG_VLEN_HIGH,    0xa7,
+	REG_VLEN_LOW,     0xbc,
+	REG_HACT_LOW,     0x20,
+	REG_VACT_HIGH,    0x57,
+	REG_VACT_LOW,     0x98,
+	REG_MISC2,        0x34,
+	REG_TXDRIVER_1,   0x10
+};
+
+uint8_t TP2912_TVI4M_DataSet[] = {
+	/*             |------------------------|
+	 *             |         TP2912         |
+	 *|------------|-----------|------------|
+	 *| Registers  |  4M30     |    4M25    |
+	 *|------------|-----------|------------|*/
+	REG_MODE,         0x8b,        0x8b,
+	REG_ENC_MODE,     0x52,        0x52,
+	REG_BSTLN,        0x80,        0x80,
+	REG_MISC1,        0x45,        0x45,
+	REG_VDTH0_LOW,    0xe0,        0xe0,
+	REG_SYLO,         0x50,        0x50,
+	REG_SYHI,         0x50,        0x50,
+	REG_VDTH0_HIGH,   0x0a,        0x3a,
+	REG_H0TVS_LOW,    0x08,        0x08,
+	REG_H0TVD_LOW,    0x08,        0x08,
+	REG_H0TBST_HIGH,  0x50,        0x50,
+	REG_HLEN_1,       0xe4,        0x78,
+	REG_HINDLY_HIGH,  0x1c,        0x3f,
+	REG_HINDLY_LOW,   0x00,        0x90,
+	REG_VINDLY,       0x05,        0x05,
+	REG_UGAIN,        0x55,        0x55,
+	REG_VGAIN,        0x76,        0x76,
+	REG_BGAIN,        0x80,        0x80,
+	REG_FS_4,         0x57,        0x57,
+	REG_FS_3,         0x42,        0x42,
+	REG_FS_2,         0x77,        0x77,
+	REG_FS_1,         0x87,        0x87,
+	REG_VLEN_HIGH,    0xa5,        0xa5,
+	REG_VLEN_LOW,     0xdc,        0xdc,
+	REG_HACT_LOW,     0x00,        0x00,
+	REG_VACT_HIGH,    0x55,        0x55,
+	REG_VACT_LOW,     0xa0,        0xa0,
+	REG_MISC2,        0x34,        0x34,
+	REG_TXDRIVER_1,   0x10,        0x10
+};
+
+uint8_t TP2912B_TVI1080P60_DataSet[] = {
+	/* Registers     1080P60 */
+	REG_MODE,         0x8b,
+	REG_ENC_MODE,     0x92,
+	REG_BSTLN,        0x64,
+	REG_MISC1,        0x46,
+	REG_VDTH0_LOW,    0x80,
+	REG_SYLO,         0x40,
+	REG_SYHI,         0x40,
+	REG_VDTH0_HIGH,   0x00,
+	REG_H0TVS_LOW,    0xc0,
+	REG_H0TVD_LOW,    0xc0,
+	REG_H0TBST_HIGH,  0x38,
+	REG_HLEN_1,       0x98,
+	REG_HINDLY_HIGH,  0x08,
+	REG_HINDLY_LOW,   0x70,
+	REG_VINDLY,       0x04,
+	REG_BKLVL,        0x3c,
+	REG_SYNHT,        0x38,
+	REG_UGAIN,        0x55,
+	REG_VGAIN,        0x76,
+	REG_BGAIN,        0x80,
+	REG_FS_4,         0x57,
+	REG_FS_3,         0x74,
+	REG_FS_2,         0xbc,
+	REG_FS_1,         0x6a,
+	REG_HACT_HIGH,    0x74,
+	REG_VLEN_LOW,     0x65,
+	REG_HACT_LOW,     0x80,
+	REG_VACT_HIGH,    0x54,
+	REG_VACT_LOW,     0x38,
+	REG_MISC2,        0x35,
+	REG_MISC3,        0x39,
+	REG_PTZ_2,        0x90,
+	REG_TXDRIVER_1,   0x90,
+	REG_DAC,          0x41,
+	REG_PLLDICTRL_II, 0x21
+};
+
+uint8_t TP2912B_TVI1080P3025_DataSet[] = {
+	/* Registers     1080P30       1080P25   */
+	REG_MODE,         0x83,         0x93,
+	REG_ENC_MODE,     0x42,         0x42,
+	REG_BSTLN,        0x40,         0x40,
+	REG_MISC1,        0x42,         0x42,
+	REG_VDTH0_LOW,    0x58,         0x10,
+	REG_SYLO,         0x2c,         0x2c,
+	REG_SYHI,         0x2c,         0x2c,
+	REG_VDTH0_HIGH,   0x00,         0x20,
+	REG_H0TVS_LOW,    0xc0,         0xc0,
+	REG_H0TVD_LOW,    0xc0,         0xc0,
+	REG_H0TBST_HIGH,  0x28,         0x28,
+	REG_HLEN_1,       0x98,         0x50,
+	REG_HINDLY_HIGH,  0x08,         0x2a,
+	REG_HINDLY_LOW,   0x6c,         0x24,
+	REG_VINDLY,       0x04,         0x04,
+	REG_BKLVL,        0x3c,         0x3c,
+	REG_SYNHT,        0x38,         0x38,
+	REG_FS_4,         0x48,         0x48,
+	REG_FS_3,         0xbb,         0xbb,
+	REG_FS_2,         0x2e,         0x2e,
+	REG_FS_1,         0x8b,         0x8b,
+	REG_MISC2,        0x35,         0x35,
+	REG_MISC3,        0x19,         0x19,
+	REG_PTZ_2,        0xd0,         0xd0,
+	REG_TXDRIVER_1,   0x50,         0x50,
+	REG_DAC,          0x40,         0x40,
+	REG_PLLDICTRL_II, 0x21,         0x21
+};
+
+uint8_t TP2912B_TVI720P_DataSet[] = {
+	/* Registers     720P60      720P50        720P30V2     720P25V2 */
+	REG_MODE,         0x8b,        0x9b,        0x8b,        0x9b,
+	REG_ENC_MODE,     0x42,        0x42,        0x4a,        0x4a,
+	REG_BSTLN,        0x46,        0x46,        0x46,        0x46,
+	REG_MISC1,        0x42,        0x42,        0x42,        0x42,
+	REG_VDTH0_LOW,    0x6e,        0xb8,        0x6e,        0xb8,
+	REG_SYLO,         0x28,        0x28,        0x28,        0x28,
+	REG_SYHI,         0x28,        0x28,        0x28,        0x28,
+	REG_VDTH0_HIGH,   0x05,        0x15,        0x05,        0x05,
+	REG_H0TVS_LOW,    0x04,        0x04,        0x04,        0x04,
+	REG_H0TVD_LOW,    0x04,        0x04,        0x04,        0x04,
+	REG_H0TBST_HIGH,  0x28,        0x28,        0x28,        0x28,
+	REG_HLEN_1,       0x72,        0xbc,        0x72,        0xbc,
+	REG_HINDLY_HIGH,  0x06,        0x17,        0x06,        0x17,
+	REG_HINDLY_LOW,   0x83,        0xcd,        0x83,        0xcd,
+	REG_VINDLY,       0x05,        0x05,        0x05,        0x05,
+	REG_BKLVL,        0x3c,        0x3c,        0x3c,        0x3c,
+	REG_SYNHT,        0x38,        0x38,        0x38,        0x38,
+	REG_FS_4,         0x48,        0x48,        0x24,        0x24,
+	REG_FS_3,         0xbb,        0xbb,        0x5d,        0x5d,
+	REG_FS_2,         0x2e,        0x2e,        0x17,        0x17,
+	REG_FS_1,         0x8b,        0x8b,        0x45,        0x45,
+	REG_MISC2,        0x35,        0x35,        0x35,        0x35,
+	REG_MISC3,        0x19,        0x19,        0x19,        0x19,
+	REG_PTZ_2,        0xd0,        0xd0,        0xd0,        0xd0,
+	REG_TXDRIVER_1,   0x50,        0x50,        0x10,        0x10,
+	REG_DAC,          0x40,        0x40,        0x40,        0x40,
+	REG_PLLDICTRL_II, 0x21,        0x21,        0x21,        0x21
+};
+
+uint8_t TP2912B_TVINTSC_DataSet[] = {
+	/* Registers     NTSC */
+	REG_MODE,         0x09,
+	REG_ENC_MODE,     0x62,
+	REG_BSTLN,        0x24,
+	REG_MISC1,        0x82,
+	REG_VDTH0_LOW,    0x20,
+	REG_SYLO,         0x42,
+	REG_SYHI,         0x28,
+	REG_VDTH0_HIGH,   0x05,
+	REG_H0TVS_LOW,    0x04,
+	REG_H0TVD_LOW,    0x04,
+	REG_H0TBST_HIGH,  0x3c,
+	REG_HLEN_1,       0x5a,
+	REG_HINDLY_HIGH,  0x03,
+	REG_HINDLY_LOW,   0x16,
+	REG_VINDLY,       0x04,
+	REG_BKLVL,        0x3c,
+	REG_SYNHT,        0x38,
+	REG_YGAIN,        0x97,
+	REG_UGAIN,        0x81,
+	REG_VGAIN,        0xb6,
+	REG_BGAIN,        0x80,
+	REG_FS_4,         0x48,
+	REG_FS_3,         0xbb,
+	REG_FS_2,         0x2e,
+	REG_FS_1,         0x8b,
+	REG_MISC2,        0x34,
+	REG_MISC3,        0x19,
+	REG_PTZ_2,        0xd0,
+	REG_TXDRIVER_1,   0x10,
+	REG_DAC,          0x40,
+	REG_PLLDICTRL_II, 0xa1
+};
+
+uint8_t TP2912B_TVIPAL_DataSet[] = {
+	/* Registers     PAL */
+	REG_MODE,         0x1a,
+	REG_ENC_MODE,     0x63,
+	REG_BSTLN,        0x20,
+	REG_MISC1,        0x82,
+	REG_VDTH0_LOW,    0x20,
+	REG_SYLO,         0x42,
+	REG_SYHI,         0x28,
+	REG_VDTH0_HIGH,   0x05,
+	REG_H0TVS_LOW,    0x04,
+	REG_H0TVD_LOW,    0x04,
+	REG_H0TBST_HIGH,  0x3c,
+	REG_HLEN_1,       0x60,
+	REG_HINDLY_HIGH,  0x03,
+	REG_HINDLY_LOW,   0x20,
+	REG_VINDLY,       0x04,
+	REG_BKLVL,        0x3f,
+	REG_SYNHT,        0x3b,
+	REG_YGAIN,        0xa0,
+	REG_UGAIN,        0x88,
+	REG_VGAIN,        0xc1,
+	REG_BGAIN,        0x5f,
+	REG_FS_4,         0x48,
+	REG_FS_3,         0xbb,
+	REG_FS_2,         0x2e,
+	REG_FS_1,         0x8b,
+	REG_MISC2,        0x34,
+	REG_MISC3,        0x19,
+	REG_PTZ_2,        0xd0,
+	REG_TXDRIVER_1,   0x10,
+	REG_DAC,          0x40,
+	REG_PLLDICTRL_II, 0xa1
+};
+
+uint8_t TP2912B_TVI8M125_DataSet[] = {
+	/* Registers     8M125 */
+	REG_MODE,         0x8b,
+	REG_ENC_MODE,     0x52,
+	REG_BSTLN,        0x78,
+	REG_MISC1,        0x46,
+	REG_VDTH0_LOW,    0xe0,
+	REG_SYLO,         0x50,
+	REG_SYHI,         0x50,
+	REG_VDTH0_HIGH,   0x35,
+	REG_H0TVS_LOW,    0x00,
+	REG_H0TVD_LOW,    0x80,
+	REG_H0TBST_HIGH,  0x50,
+	REG_HLEN_1,       0xa0,
+	REG_HINDLY_HIGH,  0x44,
+	REG_HINDLY_LOW,   0x18,
+	REG_VINDLY,       0x08,
+	REG_BKLVL,        0x3c,
+	REG_SYNHT,        0x38,
+	REG_UGAIN,        0x55,
+	REG_VGAIN,        0x76,
+	REG_BGAIN,        0x80,
+	REG_FS_4,         0x57,
+	REG_FS_3,         0x43,
+	REG_FS_2,         0x4e,
+	REG_FS_1,         0x02,
+	REG_HACT_HIGH,    0xf8,
+	REG_VLEN_LOW,     0xca,
+	REG_HACT_LOW,     0x00,
+	REG_VACT_HIGH,    0x58,
+	REG_VACT_LOW,     0x70,
+	REG_MISC2,        0xb5,
+	REG_MISC3,        0x39,
+	REG_PTZ_2,        0x90,
+	REG_TXDRIVER_1,   0x90,
+	REG_DAC,          0x41,
+	REG_PLLDICTRL_II, 0x21
+};
+
+uint8_t TP2912B_TVI5M20_DataSet[] = {
+	/* Registers     5M20 */
+	REG_MODE,         0x8b,
+	REG_ENC_MODE,     0x52,
+	REG_BSTLN,        0x80,
+	REG_MISC1,        0x46,
+	REG_VDTH0_LOW,    0x80,
+	REG_SYLO,         0x50,
+	REG_SYHI,         0x50,
+	REG_VDTH0_HIGH,   0x21,
+	REG_H0TVS_LOW,    0xe0,
+	REG_H0TVD_LOW,    0x80,
+	REG_H0TBST_HIGH,  0x50,
+	REG_HLEN_1,       0xa6,
+	REG_HINDLY_HIGH,  0x3e,
+	REG_HINDLY_LOW,   0x00,
+	REG_VINDLY,       0x04,
+	REG_BKLVL,        0x3c,
+	REG_SYNHT,        0x38,
+	REG_UGAIN,        0x55,
+	REG_VGAIN,        0x76,
+	REG_BGAIN,        0x80,
+	REG_FS_4,         0x57,
+	REG_FS_3,         0x7d,
+	REG_FS_2,         0x52,
+	REG_FS_1,         0x3b,
+	REG_HACT_HIGH,    0xa7,
+	REG_VLEN_LOW,     0xbc,
+	REG_HACT_LOW,     0x20,
+	REG_VACT_HIGH,    0x57,
+	REG_VACT_LOW,     0x98,
+	REG_MISC2,        0x35,
+	REG_MISC3,        0x39,
+	REG_PTZ_2,        0x90,
+	REG_TXDRIVER_1,   0x90,
+	REG_DAC,          0x41,
+	REG_PLLDICTRL_II, 0x21
+};
+
+uint8_t TP2912B_TVI4M_DataSet[] = {
+	/* Registers     4M30          4M25 */
+	REG_MODE,         0x8b,        0x8b,
+	REG_ENC_MODE,     0x52,        0x52,
+	REG_BSTLN,        0x80,        0x80,
+	REG_MISC1,        0x46,        0x46,
+	REG_VDTH0_LOW,    0xe0,        0xe0,
+	REG_SYLO,         0x50,        0x50,
+	REG_SYHI,         0x50,        0x50,
+	REG_VDTH0_HIGH,   0x0a,        0x3a,
+	REG_H0TVS_LOW,    0x08,        0x08,
+	REG_H0TVD_LOW,    0x08,        0x08,
+	REG_H0TBST_HIGH,  0x50,        0x50,
+	REG_HLEN_1,       0xe4,        0x78,
+	REG_HINDLY_HIGH,  0x1c,        0x3f,
+	REG_HINDLY_LOW,   0x00,        0x90,
+	REG_VINDLY,       0x05,        0x05,
+	REG_BKLVL,        0x3c,        0x3c,
+	REG_SYNHT,        0x38,        0x38,
+	REG_UGAIN,        0x55,        0x55,
+	REG_VGAIN,        0x76,        0x76,
+	REG_BGAIN,        0x80,        0x80,
+	REG_FS_4,         0x57,        0x57,
+	REG_FS_3,         0x42,        0x42,
+	REG_FS_2,         0x77,        0x77,
+	REG_FS_1,         0x87,        0x87,
+	REG_HACT_HIGH,    0xa5,        0xa5,
+	REG_VLEN_LOW,     0xdc,        0xdc,
+	REG_HACT_LOW,     0x00,        0x00,
+	REG_VACT_HIGH,    0x55,        0x55,
+	REG_VACT_LOW,     0xa0,        0xa0,
+	REG_MISC2,        0x35,        0x35,
+	REG_MISC3,        0x39,        0x39,
+	REG_PTZ_2,        0x90,        0x90,
+	REG_TXDRIVER_1,   0x90,        0x90,
+	REG_DAC,          0x41,        0x41,
+	REG_PLLDICTRL_II, 0x21,        0x21
+};
+
+uint8_t TP2910_TVI1080P_DataSet[] = {
+	/* Registers     1080P30      1080P25 */
+	REG_MODE,         0x87,        0x97,
+	REG_BSTLN,        0x40,        0x40,
+	REG_VDTH0_LOW,    0x58,        0x10,
+	REG_SYLO,         0x2c,        0x2c,
+	REG_SYHI,         0x2c,        0x2c,
+	REG_VDTH0_HIGH,   0x00,        0x20,
+	REG_H0TVS_LOW,    0xc0,        0xc0,
+	REG_H0TVD_LOW,    0xc0,        0xc0,
+	REG_HLEN_1,       0x98,        0x50,
+	REG_HINDLY_HIGH,  0x08,        0x2a,
+	REG_HINDLY_LOW,   0x6c,        0x24,
+	REG_TXDRIVER_1,   0x00,        0x00
+};
+
+uint8_t TP2910_TVI720P_DataSet[] = {
+	/* Registers     720P60      720P50       720P30       720P25 */
+	REG_MODE,         0x8b,        0x9b,         0x8f,        0x9f,
+	REG_VDTH0_LOW,    0x6e,        0xb8,         0xe0,        0x74,
+	REG_SYLO,         0x28,        0x28,         0x28,        0x28,
+	REG_SYHI,         0x28,        0x28,         0x28,        0x28,
+	REG_VDTH0_HIGH,   0x05,        0x15,         0x45,        0x65,
+	REG_H0TVS_LOW,    0x04,        0x04,         0x04,        0x04,
+	REG_H0TVD_LOW,    0x04,        0x04,         0x04,        0x04,
+	REG_HLEN_1,       0x72,        0xbc,         0xe4,        0x78,
+	REG_HINDLY_HIGH,  0x06,        0x17,         0x6c,        0x9f,
+	REG_HINDLY_LOW,   0x83,        0xcd,         0xf5,        0x89,
+	REG_VINDLY,       0x05,        0x05,         0x05,        0x05,
+	REG_TXDRIVER_1,   0x00,        0x00,         0x10,        0x10
+};
+
+uint8_t TP2910_TVINTSC_DataSet[] = {
+	/* Registers     NTSC */
+	REG_MODE,         0x09,
+	REG_BSTLN,        0x24,
+	REG_MISC1,        0x81,
+	REG_VDTH0_LOW,    0x20,
+	REG_SYLO,         0x42,
+	REG_SYHI,         0x28,
+	REG_VDTH0_HIGH,   0x05,
+	REG_H0TVS_LOW,    0x04,
+	REG_H0TVD_LOW,    0x04,
+	REG_H0TBST_HIGH,  0x3a,
+	REG_HLEN_1,       0x5a,
+	REG_HINDLY_HIGH,  0x03,
+	REG_HINDLY_LOW,   0x16,
+	REG_VINDLY,       0x04,
+	REG_YGAIN,        0x97,
+	REG_UGAIN,        0x81,
+	REG_VGAIN,        0xb6,
+	REG_TXDRIVER_1,   0x10
+};
+
+uint8_t TP2910_TVIPAL_DataSet[] = {
+	/* Registers     PAL */
+	REG_MODE,         0x09,
+	REG_BSTLN,        0x24,
+	REG_MISC1,        0x81,
+	REG_VDTH0_LOW,    0x20,
+	REG_SYLO,         0x42,
+	REG_SYHI,         0x28,
+	REG_VDTH0_HIGH,   0x05,
+	REG_H0TVS_LOW,    0x04,
+	REG_H0TVD_LOW,    0x04,
+	REG_H0TBST_HIGH,  0x3a,
+	REG_HLEN_1,       0x5a,
+	REG_HINDLY_HIGH,  0x03,
+	REG_HINDLY_LOW,   0x16,
+	REG_VINDLY,       0x04,
+	REG_YGAIN,        0x97,
+	REG_UGAIN,        0x81,
+	REG_VGAIN,        0xb6,
+	REG_TXDRIVER_1,   0x10
+};
+
+uint64_t tp2912_tables[] = {
+/* width         height         fps                chipid  bitmask                         TVI/AHD                   table                        column */
+	1920,       1080,           30,        BIT(TP2912) | BIT(TP2912B) | BIT(TP2915),       AHD,       (uint64_t)TP2912_AHD1080P_DataSet      ,      1,
+	1920,       1080,           25,        BIT(TP2912) | BIT(TP2912B) | BIT(TP2915),       AHD,       (uint64_t)TP2912_AHD1080P_DataSet      ,      2,
+	1920,       1080,           30,        TP2910                                  ,       AHD,       (uint64_t)TP2910_AHD1080P_DataSet      ,      1,
+	1920,       1080,           25,        TP2910                                  ,       AHD,       (uint64_t)TP2910_AHD1080P_DataSet      ,      2,
+	1920,       1080,           30,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI1080P_DataSet      ,      1,
+	1920,       1080,           25,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI1080P_DataSet      ,      2,
+	1920,       1080,           30,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI1080P3025_DataSet ,      1,
+	1920,       1080,           25,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI1080P3025_DataSet ,      2,
+	1920,       1080,           30,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI1080P_DataSet      ,      1,
+	1920,       1080,           25,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI1080P_DataSet      ,      2,
+	1920,       1080,           60,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI1080P60_DataSet   ,      1,
+	1280,        720,           30,        BIT(TP2912)                             ,       AHD,       (uint64_t)TP2912_AHD720P_DataSet       ,      1,
+	1280,        720,           25,        BIT(TP2912)                             ,       AHD,       (uint64_t)TP2912_AHD720P_DataSet       ,      2,
+	1280,        720,           30,        BIT(TP2912B)                            ,       AHD,       (uint64_t)TP2912_AHD720P_DataSet       ,      3,
+	1280,        720,           25,        BIT(TP2912B)                            ,       AHD,       (uint64_t)TP2912_AHD720P_DataSet       ,      4,
+	1280,        720,           30,        BIT(TP2910)                             ,       AHD,       (uint64_t)TP2910_AHD720P_DataSet       ,      1,
+	1280,        720,           25,        BIT(TP2910)                             ,       AHD,       (uint64_t)TP2910_AHD720P_DataSet       ,      2,
+	1280,        720,           60,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI720P_DataSet       ,      1,
+	1280,        720,           50,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI720P_DataSet       ,      2,
+	1280,        720,           30,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI720P_DataSet       ,      3,
+	1280,        720,           25,        BIT(TP2912B)                            ,       TVI,       (uint64_t)TP2912_TVI720P_DataSet       ,      4,
+	1280,        720,           60,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI720P_DataSet      ,      1,
+	1280,        720,           50,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI720P_DataSet      ,      2,
+	1280,        720,           30,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI720P_DataSet      ,      3,
+	1280,        720,           25,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI720P_DataSet      ,      4,
+	1280,        720,           60,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI720P_DataSet       ,      1,
+	1280,        720,           50,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI720P_DataSet       ,      2,
+	1280,        720,           30,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI720P_DataSet       ,      3,
+	1280,        720,           25,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI720P_DataSet       ,      4,
+	/* NTSC */
+	720,         480,           60,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVINTSC_DataSet       ,      1,
+	720,         480,           60,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVINTSC_DataSet      ,      1,
+	720,         480,           60,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVINTSC_DataSet       ,      1,
+	/* PAL */
+	720,         576,           50,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVIPAL_DataSet        ,      1,
+	720,         576,           50,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVIPAL_DataSet       ,      1,
+	720,         576,           50,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVIPAL_DataSet        ,      1,
+	/* 4M */
+	2560,        1440,          30,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI4M_DataSet         ,      1,
+	2560,        1440,          25,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI4M_DataSet         ,      2,
+	2560,        1440,          30,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI4M_DataSet        ,      1,
+	2560,        1440,          25,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI4M_DataSet        ,      2,
+	/* 5M */
+	2592,        1944,          20,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI5M20_DataSet       ,      1,
+	2592,        1944,          20,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI5M20_DataSet      ,      1,
+	/* 8M */
+	3840,        2160,          15,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI8M15_DataSet       ,      1,
+	3840,        2160,          125,       BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI8M125_DataSet     ,      1,
+};
 
 #endif
