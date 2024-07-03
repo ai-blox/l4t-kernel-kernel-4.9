@@ -29,8 +29,10 @@
 
 static int debug;
 static bool diff_mode = false;
+static bool test_pattern = false;
 module_param(debug, int, 0644);
 module_param(diff_mode, bool, 0644);
+module_param(test_pattern, bool, 0644);
 MODULE_PARM_DESC(debug, "debug level (0-2)");
 MODULE_DESCRIPTION("TP2912 - Untra High Definition HD-TVI Video Encoder driver");
 MODULE_AUTHOR("Nari");
@@ -39,8 +41,15 @@ MODULE_LICENSE("GPL v2");
 struct tp2912_priv {
 	uint8_t chipid;
 	struct v4l2_subdev sd;
+	struct media_pad pad;
 	struct v4l2_ctrl_handler hdl;
+	bool power_on;
 };
+
+static inline struct tp2912_priv *sd_to_priv(struct v4l2_subdev *sd)
+{
+	return container_of(sd, struct tp2912_priv, sd);
+}
 
 static int __attribute__((unused)) tp2912_read (struct tp2912_priv *priv, uint8_t reg)
 {
@@ -282,7 +291,7 @@ static int tp2912_set_output_mode(struct tp2912_priv *priv) {
 	if((priv->chipid == TP2912) || (priv->chipid == TP2912B) || (priv->chipid == TP2915)){
 		ret = tp2912_modify(priv, REG_TXDRIVER_3, 
 						0, 
-						(1 << 3) /* voltage mode */
+						BIT(3) /* voltage mode */
 						);
 		if(ret < 0) {
 			v4l_err(client, "%s (line %d): failed to write register REG_TXDRIVER_3. Error = %d\n", __func__, __LINE__, ret);
@@ -292,7 +301,7 @@ static int tp2912_set_output_mode(struct tp2912_priv *priv) {
 		if(diff_mode == true){
 			ret = tp2912_modify(priv, REG_TXDRIVER_3, 
 										0, 
-										(1 << 7) /* differential output mode */
+										BIT(7) /* differential output mode */
 								);
 			if(ret < 0) {
 				v4l_err(client, "%s (line %d): failed to write register REG_TXDRIVER_3. Error = %d\n", __func__, __LINE__, ret);
@@ -315,7 +324,7 @@ static int tp2912_set_output_mode(struct tp2912_priv *priv) {
 			}
 		} else {
 			ret = tp2912_modify(priv, REG_TXDRIVER_3, 
-										(1 << 7), /* Single-ended output mode */
+										BIT(7), /* Single-ended output mode */
 										0
 							);
 			if(ret < 0) {
@@ -366,7 +375,7 @@ static int tp2912_init(struct tp2912_priv *priv) {
 		if(priv->chipid == TP2912) {
 			/* Set REG_DAC = 0x8b */
 			ret = tp2912_write(priv, REG_DAC, 
-						(1 << 7) |      /* VCMO: 0 (1.6V), 1 (1.475V) recommended for VDD3 = 3V */
+						BIT(7) |        /* VCMO: 0 (1.6V), 1 (1.475V) recommended for VDD3 = 3V */
 						(0b0 << 4) |    /* DAC gain control: -16%  */
 						(0b1 << 3) |    /* AC compensation mode control: enable  */
 						(0b101 << 0)    /* DAC full scale current control: 24mA  */
@@ -413,6 +422,17 @@ static int tp2912_init(struct tp2912_priv *priv) {
 		return ret;
 	}
 
+	/* Output test pattern if enabled */
+	ret = tp2912_modify(priv, REG_MODE, 
+								test_pattern ? 0 : BIT(6),
+								test_pattern ? BIT(6) : 0 
+					);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write register REG_MODE. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
+	priv->power_on = true;
 	return ret;
 }
 
@@ -425,17 +445,145 @@ static const struct v4l2_subdev_video_ops tp2912_video_ops = {
 	.s_std_output = tp2912_s_std_output,
 };
 
+static int tp2912_log_status(struct v4l2_subdev *sd)
+{
+	struct i2c_client __attribute__((unused)) *client = v4l2_get_subdevdata(sd);
+	struct tp2912_priv __attribute__((unused)) *priv = sd_to_priv(sd);
+
+	return 0;
+}
+
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+static int tp2912_g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct tp2912_priv *priv = sd_to_priv(sd);
+	int ret;
+
+
+	ret = tp2912_read(priv, reg);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to read register 0x%08x. Error = %d\n", __func__, __LINE__, reg->reg, ret);
+		return ret;
+	}
+
+
+	reg->size = 1;
+	reg->val = ret;
+
+	return 0;
+}
+
+static int tp2912_s_register(struct v4l2_subdev *sd, const struct v4l2_dbg_register *reg)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct tp2912_priv *priv = sd_to_priv(sd);
+	int ret;
+
+	ret = tp2912_write(priv, reg->reg, reg->val);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write register at 0x%08x. Error = %d\n", __func__, __LINE__, reg->reg, ret);
+		return ret;
+	}
+
+	return 0;
+}
+#endif
+
+static int tp2912_s_power(struct v4l2_subdev *sd, int on)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct tp2912_priv *priv = sd_to_priv(sd);
+	int ret = 0;
+
+	v4l2_dbg(1, debug, client, "%s: power %s\n", __func__, on ? "on" : "off");
+
+	if (priv->power_on == !!on)
+		return 0;
+
+	if (on) {
+		priv->power_on = true;
+	} else {
+		priv->power_on = false;
+	}
+
+	return ret;
+}
+
 static const struct v4l2_subdev_core_ops tp2912_core_ops = {
+	.log_status = tp2912_log_status,
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	.g_register = tp2912_g_register,
+	.s_register = tp2912_s_register,
+#endif
+	.s_power = tp2912_s_power,
+	.interrupt_service_routine = NULL,
 };
+
 static const struct v4l2_subdev_ops tp2912_ops = {
 	.core	= &tp2912_core_ops,
 	.video	= &tp2912_video_ops,
 };
+
+static const struct v4l2_ctrl_config tp2912_ctrl_diff_mode = {
+	.ops = &tp2912_ops,
+	.id = V4L2_CID_TP2912_DIFF_MODE,
+	.name = "Differential mode output",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = false,
+	.max = true,
+	.step = 1,
+	.def = false,
+};
+
+static const char * const tp2912_test_pattern_menu[] = {
+	"Disabled",
+	"Enabled",
+};
+
+static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
+{
+	struct v4l2_subdev *sd =
+		&container_of(ctrl->handler, struct tp2912_priv, hdl)->sd;
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct tp2912_priv *priv = sd_to_priv(sd);
+
+	switch (ctrl->id) {
+		case V4L2_CID_GAIN:
+			break;
+		case V4L2_CID_TEST_PATTERN:
+			test_pattern = ctrl->val ? true : false;
+			/* Output test pattern if enabled */
+			ret = tp2912_modify(priv, REG_MODE, 
+										test_pattern ? 0 : BIT(6),
+										test_pattern ? BIT(6) : 0 
+							);
+			if(ret < 0) {
+				v4l_err(client, "%s (line %d): failed to write register REG_MODE. Error = %d\n", __func__, __LINE__, ret);
+				return ret;
+			}
+			break;
+		case V4L2_CID_TP2912_DIFF_MODE:
+		break;
+		default:
+			v4l_err(client, "%s: Unknown control id\n", __func__);
+			return -EINVAL;
+	}
+
+	return -EINVAL;
+}
+
+static const struct v4l2_ctrl_ops tp2912_ctrl_ops = {
+	.s_ctrl = tp2912_s_ctrl,
+};
+
 static int tp2912_probe(struct i2c_client *client, 
 						const struct i2c_device_id *id)
 {
 	int ret = 0;
 	struct tp2912_priv *priv;
+	struct v4l2_ctrl_handler *hdl;
+	struct v4l2_subdev *sd;
 
 	/* Check if the adapter supports the needed features */
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
@@ -448,15 +596,46 @@ static int tp2912_probe(struct i2c_client *client,
 	if (priv == NULL)
 		return -ENOMEM;
 
-	v4l2_i2c_subdev_init(&priv->sd, client, &tp2912_ops);
+	sd = &priv->sd;
+	hdl = &priv->hdl;
+	v4l2_i2c_subdev_init(sd, client, &tp2912_ops);
+
+	priv->pad.flags = MEDIA_PAD_FL_SINK;
+	ret = media_entity_pads_init(&sd->entity, 1, &priv->pad);
+	if (ret) {
+		v4l_err(client, "%s (line %d): failed to media_entity_pads_init(). Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
+	sd->ctrl_handler = hdl;
+
+	ret = v4l2_ctrl_handler_init(hdl, 2);
+	if (ret) {
+		v4l_err(client, "%s (line %d): failed to v4l2_ctrl_handler_init(). Error = %d\n", __func__, __LINE__, ret);
+		goto error_1;
+	}
+
+	v4l2_ctrl_new_std_menu_items(hdl, &tp2912_ctrl_ops,
+								 V4L2_CID_TEST_PATTERN,
+								 ARRAY_SIZE(tp2912_test_pattern_menu) - 1, 0,
+								 0, tp2912_test_pattern_menu);
+	v4l2_ctrl_new_std(hdl, &tp2912_ctrl_ops,
+					  V4L2_CID_GAIN, -128, 127, 1, 0);
+	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_diff_mode, NULL);
 
 	ret = tp2912_init(priv);
 	if(ret < 0) {
 		v4l_err(client, "%s (line %d): failed to init TP2912. Error = %d\n", __func__, __LINE__, ret);
-		return ret;
+		goto error_2;
 	}
 
 	return ret; 
+
+error_2:
+	v4l2_ctrl_handler_free(hdl);
+error_1:
+	media_entity_cleanup(&sd->entity);
+	return ret;
 }
 
 static int tp2912_remove(struct i2c_client *client)

@@ -29,6 +29,8 @@ enum {
 	TP2915
 };
 
+#define V4L2_CID_TP2912_DIFF_MODE		(V4L2_CID_DV_CLASS_BASE + 0x1000)
+
 /* Clock Control Register */
 #define REG_CLK 0x00
 
