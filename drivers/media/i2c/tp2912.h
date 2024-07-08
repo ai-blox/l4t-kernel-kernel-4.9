@@ -31,10 +31,23 @@ enum {
 
 enum {
 	AHD = 0,
-	TVI
+	TVI,
+	VIDEO_MODE_NUM
+};
+
+#define TABLE_HEADER_SIZE 1
+enum {
+	WIDTH_INDEX = 0,
+	HEIGHT_INDEX,
+	FPS_INDEX,
+	CHIPID_BITMASK_INDEX,
+	MODE_INDEX,
+	TABLE_INDEX,
+	COL_INDEX,
 };
 
 #define V4L2_CID_TP2912_DIFF_MODE		(V4L2_CID_DV_CLASS_BASE + 0x1000)
+#define V4L2_CID_TP2912_VIDEO_MODE		(V4L2_CID_DV_CLASS_BASE + 0x1001)
 
 #define TP2912_MAX_WIDTH 1920
 #define TP2912_MAX_HEIGHT 1200
@@ -440,6 +453,10 @@ enum {
 
 /* TP2912, TP2912B and TP2915 use the same data set for AHD1080P */
 uint8_t  TP2912_AHD1080P_DataSet[] = {
+	/* Table header */
+	3, /* Column count */
+
+	/* Table data */
 	/* Registers     1080P30       1080P25   */
 	REG_MODE,         0x83,         0x83,
 	REG_BSTLN,        0x4a,         0x4a,
@@ -470,6 +487,10 @@ uint8_t  TP2912_AHD1080P_DataSet[] = {
 
 /* TP2912B and TP2915 use the same data set for AHD720P */
 uint8_t  TP2912_AHD720P_DataSet[] = {
+	/* Table header */
+	9, /* Column count */
+
+	/* Table data */
 	/*               |-----------------------------------------------------|-----------------------------------------------------|
 	 *               |   TP2912                                            |            TP2912B                                  |
 	 *|--------------|----------|------------|--------------|--------------|---------- |------------|---------------|------------|
@@ -504,6 +525,10 @@ uint8_t  TP2912_AHD720P_DataSet[] = {
 };
 
 uint8_t  TP2912_AHD4M_DataSet[] = {
+	/* Table header */
+	5, /* Column count */
+
+	/* Table data */
 	/*             |------------------------|--------------------------|
 	 *             |         TP2912         |           TP2912B        |
 	 *|------------|-----------|------------|--------------|-----------|
@@ -544,6 +569,10 @@ uint8_t  TP2912_AHD4M_DataSet[] = {
 };
 
 uint8_t  TP2910_AHD1080P_DataSet[] = {
+	/* Table header */
+	3, /* Column count */
+
+	/* Table data */
 	/* Registers     1080P30       1080P25   */
 	REG_BSTLN,        0x4a,         0x4a,
 	REG_VDTH0_LOW,    0xc0,         0xc0,
@@ -566,6 +595,10 @@ uint8_t  TP2910_AHD1080P_DataSet[] = {
 };
 
 uint8_t  TP2910_AHD720P_DataSet[] = {
+	/* Table header */
+	3, /* Column count */
+
+	/* Table data */
 	/* Registers     720P30       720P25   */
 	REG_MODE,         0x8f,         0x9f,
 	REG_BSTLN,        0x60,         0xb8,
@@ -583,6 +616,10 @@ uint8_t  TP2910_AHD720P_DataSet[] = {
 };
 
 uint8_t  TP2912_TVI1080P_DataSet[] = {
+	/* Table header */
+	3, /* Column count */
+
+	/* Table data */
 	/* Registers     1080P30       1080P25   */
 	REG_MODE,         0x83,         0x93,
 	REG_ENC_MODE,     0x42,         0x42,
@@ -608,6 +645,10 @@ uint8_t  TP2912_TVI1080P_DataSet[] = {
 };
 
 uint8_t  TP2912_TVI720P_DataSet[] = {
+	/* Table header */
+	5, /* Column count */
+
+	/* Table data */
 	/* Registers     720P60       720P50         720P30V2       720P25V2 */
 	REG_MODE,         0x8b,         0x9b,         0x8b,          0x9b,
 	REG_ENC_MODE,     0x42,         0x42,         0x4a,          0x4a,
@@ -635,6 +676,10 @@ uint8_t  TP2912_TVI720P_DataSet[] = {
 };
 
 uint8_t TP2912_TVINTSC_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	REG_MODE,         0x09,
 	REG_BSTLN,        0x24,
 	REG_MISC1,        0x81,
@@ -664,6 +709,10 @@ uint8_t TP2912_TVINTSC_DataSet[] = {
 };
 
 uint8_t TP2912_TVIPAL_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	REG_MODE,         0x1a,
 	REG_ENC_MODE,     0x43,
 	REG_BSTLN,        0x20,
@@ -695,6 +744,10 @@ uint8_t TP2912_TVIPAL_DataSet[] = {
 };
 
 uint8_t TP2912_TVI8M15_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	REG_MODE,         0x8b,
 	REG_ENC_MODE,     0x52,
 	REG_BSTLN,        0x78,
@@ -727,6 +780,10 @@ uint8_t TP2912_TVI8M15_DataSet[] = {
 };
 
 uint8_t TP2912_TVI8M125_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	REG_MODE,         0x8b,
 	REG_ENC_MODE,     0x52,
 	REG_BSTLN,        0x78,
@@ -759,6 +816,10 @@ uint8_t TP2912_TVI8M125_DataSet[] = {
 };
 
 uint8_t TP2912_TVI5M20_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	REG_MODE,         0x8b,
 	REG_ENC_MODE,     0x52,
 	REG_BSTLN,        0x80,
@@ -791,6 +852,10 @@ uint8_t TP2912_TVI5M20_DataSet[] = {
 };
 
 uint8_t TP2912_TVI4M_DataSet[] = {
+	/* Table header */
+	3, /* Column count */
+
+	/* Table data */
 	/*             |------------------------|
 	 *             |         TP2912         |
 	 *|------------|-----------|------------|
@@ -828,6 +893,10 @@ uint8_t TP2912_TVI4M_DataSet[] = {
 };
 
 uint8_t TP2912B_TVI1080P60_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	/* Registers     1080P60 */
 	REG_MODE,         0x8b,
 	REG_ENC_MODE,     0x92,
@@ -867,6 +936,10 @@ uint8_t TP2912B_TVI1080P60_DataSet[] = {
 };
 
 uint8_t TP2912B_TVI1080P3025_DataSet[] = {
+	/* Table header */
+	3, /* Column count */
+
+	/* Table data */
 	/* Registers     1080P30       1080P25   */
 	REG_MODE,         0x83,         0x93,
 	REG_ENC_MODE,     0x42,         0x42,
@@ -898,6 +971,10 @@ uint8_t TP2912B_TVI1080P3025_DataSet[] = {
 };
 
 uint8_t TP2912B_TVI720P_DataSet[] = {
+	/* Table header */
+	5, /* Column count */
+
+	/* Table data */
 	/* Registers     720P60      720P50        720P30V2     720P25V2 */
 	REG_MODE,         0x8b,        0x9b,        0x8b,        0x9b,
 	REG_ENC_MODE,     0x42,        0x42,        0x4a,        0x4a,
@@ -929,6 +1006,10 @@ uint8_t TP2912B_TVI720P_DataSet[] = {
 };
 
 uint8_t TP2912B_TVINTSC_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	/* Registers     NTSC */
 	REG_MODE,         0x09,
 	REG_ENC_MODE,     0x62,
@@ -964,6 +1045,10 @@ uint8_t TP2912B_TVINTSC_DataSet[] = {
 };
 
 uint8_t TP2912B_TVIPAL_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	/* Registers     PAL */
 	REG_MODE,         0x1a,
 	REG_ENC_MODE,     0x63,
@@ -999,6 +1084,10 @@ uint8_t TP2912B_TVIPAL_DataSet[] = {
 };
 
 uint8_t TP2912B_TVI8M125_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	/* Registers     8M125 */
 	REG_MODE,         0x8b,
 	REG_ENC_MODE,     0x52,
@@ -1038,6 +1127,10 @@ uint8_t TP2912B_TVI8M125_DataSet[] = {
 };
 
 uint8_t TP2912B_TVI5M20_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	/* Registers     5M20 */
 	REG_MODE,         0x8b,
 	REG_ENC_MODE,     0x52,
@@ -1077,6 +1170,10 @@ uint8_t TP2912B_TVI5M20_DataSet[] = {
 };
 
 uint8_t TP2912B_TVI4M_DataSet[] = {
+	/* Table header */
+	3, /* Column count */
+
+	/* Table data */
 	/* Registers     4M30          4M25 */
 	REG_MODE,         0x8b,        0x8b,
 	REG_ENC_MODE,     0x52,        0x52,
@@ -1116,6 +1213,10 @@ uint8_t TP2912B_TVI4M_DataSet[] = {
 };
 
 uint8_t TP2910_TVI1080P_DataSet[] = {
+	/* Table header */
+	3, /* Column count */
+
+	/* Table data */
 	/* Registers     1080P30      1080P25 */
 	REG_MODE,         0x87,        0x97,
 	REG_BSTLN,        0x40,        0x40,
@@ -1132,6 +1233,10 @@ uint8_t TP2910_TVI1080P_DataSet[] = {
 };
 
 uint8_t TP2910_TVI720P_DataSet[] = {
+	/* Table header */
+	5, /* Column count */
+
+	/* Table data */
 	/* Registers     720P60      720P50       720P30       720P25 */
 	REG_MODE,         0x8b,        0x9b,         0x8f,        0x9f,
 	REG_VDTH0_LOW,    0x6e,        0xb8,         0xe0,        0x74,
@@ -1148,6 +1253,10 @@ uint8_t TP2910_TVI720P_DataSet[] = {
 };
 
 uint8_t TP2910_TVINTSC_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	/* Registers     NTSC */
 	REG_MODE,         0x09,
 	REG_BSTLN,        0x24,
@@ -1170,6 +1279,10 @@ uint8_t TP2910_TVINTSC_DataSet[] = {
 };
 
 uint8_t TP2910_TVIPAL_DataSet[] = {
+	/* Table header */
+	2, /* Column count */
+
+	/* Table data */
 	/* Registers     PAL */
 	REG_MODE,         0x09,
 	REG_BSTLN,        0x24,
@@ -1191,7 +1304,11 @@ uint8_t TP2910_TVIPAL_DataSet[] = {
 	REG_TXDRIVER_1,   0x10
 };
 
-uint64_t tp2912_tables[] = {
+uint64_t tp2912_parent_table[] = {
+/* Table header */
+	7, /* Column count */
+
+/* Table data */
 /* width         height         fps                chipid  bitmask                         TVI/AHD                   table                        column */
 	1920,       1080,           30,        BIT(TP2912) | BIT(TP2912B) | BIT(TP2915),       AHD,       (uint64_t)TP2912_AHD1080P_DataSet      ,      1,
 	1920,       1080,           25,        BIT(TP2912) | BIT(TP2912B) | BIT(TP2915),       AHD,       (uint64_t)TP2912_AHD1080P_DataSet      ,      2,

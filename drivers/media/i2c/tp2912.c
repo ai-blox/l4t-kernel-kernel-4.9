@@ -31,9 +31,11 @@
 #include "tp2912.h"
 
 static int debug;
+static int video_mode = AHD;
 static bool diff_mode = false;
 static bool test_pattern = false;
 module_param(debug, int, 0644);
+module_param(video_mode, int, 0644);
 module_param(diff_mode, bool, 0644);
 module_param(test_pattern, bool, 0644);
 MODULE_PARM_DESC(debug, "debug level (0-2)");
@@ -120,10 +122,42 @@ static int tp2912_write_block (struct tp2912_priv *priv, uint8_t *data)
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	int i;
 
-	for (i = 0; i < sizeof(data); i += 2) {
+	for (i = 0; i < sizeof(data) / sizeof(data[0]); i += 2) {
 		ret = i2c_smbus_write_byte_data(client, data[i], data[i + 1]);
 		if (ret < 0) {
 			dev_err(&client->dev, "%s: failed to write to 0x%02x. Error = %d\n", __func__, data[i], ret);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int tp2912_write_table (struct tp2912_priv *priv, uint8_t *table, uint8_t col)
+{
+	int ret;
+	struct v4l2_subdev *sd = &priv->sd;
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	uint8_t col_count, row_count;
+	int data_size;
+	uint8_t *data;
+	int row;
+
+	data_size = sizeof(table) / sizeof(table[0]) - TABLE_HEADER_SIZE;
+	col_count = table[0];
+	row_count =  data_size / col_count;
+	data = &table[TABLE_HEADER_SIZE];
+
+	v4l2_dbg(2, debug, client, "%s (line %d): col_count = %d, row_count = %d\n", __func__, __LINE__,
+			 col_count, row_count);
+
+	for (row = 0; row < row_count; row++) {
+		v4l2_dbg(2, debug, client, "%s (line %d): write value 0x%08x to register 0x%08x\n", __func__, __LINE__,
+				data[row * col_count + col], data[row * col_count]);
+
+		ret = i2c_smbus_write_byte_data(client, data[row * col_count], data[row * col_count + col]);
+		if (ret < 0) {
+			dev_err(&client->dev, "%s: failed to write to 0x%02x. Error = %d\n", __func__, data[row * col_count], ret);
 			return ret;
 		}
 	}
@@ -451,6 +485,50 @@ static const struct v4l2_dv_timings_cap tp2912_timings_cap = {
 		V4L2_DV_BT_CAP_PROGRESSIVE | V4L2_DV_BT_CAP_INTERLACED | V4L2_DV_BT_CAP_CUSTOM)
 };
 
+static uint8_t *tp2912_find_table(struct tp2912_priv *priv, 
+							   int width, int height, int fps, 
+							   uint8_t chipid,
+							   uint8_t mode, uint8_t *out_col) {
+	struct v4l2_subdev *sd = &priv->sd;
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	uint64_t col_count, row_count, data_size;
+	int i, row, col;
+	uint64_t input[] = {width, height, fps, BIT(chipid), mode};
+	uint64_t *data;
+
+	data_size = sizeof(tp2912_parent_table) / sizeof(tp2912_parent_table[0]) - TABLE_HEADER_SIZE;
+	data = &tp2912_parent_table[TABLE_HEADER_SIZE];
+	col_count = tp2912_parent_table[0];
+	row_count = data_size / col_count;
+
+	for(row = 0; row < row_count; row++) {
+		for(col = 0; col < TABLE_INDEX; col++) {
+			i = col + row * col_count;
+
+			if((col == CHIPID_BITMASK_INDEX) && !(data[i] & input[col])) {
+				v4l2_dbg(2, debug, client, "%s (line %d): row = %d, col = %d, chipid = %d \n", __func__, __LINE__,
+						 row, col, chipid);
+				break;
+			}
+
+			if(data[i] != input[col]) {
+				v4l2_dbg(2, debug, client, "%s (line %d): row = %d, col = %d, chipid = %d \n", __func__, __LINE__,
+						 row, col, chipid);
+				break;
+			}
+		}
+
+		if(col == TABLE_INDEX) {
+			v4l2_dbg(2, debug, client, "%s (line %d): GOT row = %d, col = %d, chipid = %d \n", __func__, __LINE__,
+					 row, col, chipid);
+			*out_col = data[i + 1];
+			return (uint8_t *)data[i];
+		}
+	}
+
+	return NULL;
+}
+
 static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 			       struct v4l2_dv_timings *timings)
 {
@@ -458,6 +536,8 @@ static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 	struct tp2912_priv *priv = sd_to_priv(sd);
 	struct v4l2_bt_timings *bt = &timings->bt;
 	u32 fps;
+	uint8_t *table;
+	uint8_t col;
 	int ret;
 
 	v4l2_dbg(1, debug, sd, "%s:\n", __func__);
@@ -483,15 +563,17 @@ static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 	}
 
 	fps = (u32)bt->pixelclock / (V4L2_DV_BT_FRAME_WIDTH(bt) * V4L2_DV_BT_FRAME_HEIGHT(bt));
-	switch (fps) {
-	case 24:
-		break;
-	case 25:
-		break;
-	case 30:
-		break;
-	default:
-		break;
+	table = tp2912_find_table(priv, bt->width, bt->height, fps, video_mode, priv->chipid, &col);
+	if(!table) {
+		v4l_err(client, "%s (line %d): failed to lookup table for %s video %dx%d@fps = %d\n", __func__, __LINE__, 
+				video_mode == TVI ? "TVI" : "AHD", bt->width, bt->height, fps);
+		return -ENODEV;
+	}
+
+	ret = tp2912_write_table(priv, table, col);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write table. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
 	}
 
 	return 0;
@@ -612,6 +694,7 @@ static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
 		&container_of(ctrl->handler, struct tp2912_priv, hdl)->sd;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct tp2912_priv *priv = sd_to_priv(sd);
+	struct v4l2_dv_timings timings;
 	int ret = 0;
 
 	switch (ctrl->id) {
@@ -630,6 +713,29 @@ static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
 			}
 			break;
 		case V4L2_CID_TP2912_DIFF_MODE:
+			diff_mode = ctrl->val ? true : false;
+			ret = tp2912_set_output_mode(priv);
+			if(ret < 0) {
+				v4l_err(client, "%s (line %d): failed to set output mode. Error = %d\n", __func__, __LINE__, ret);
+				return ret;
+			}
+		break;
+		case V4L2_CID_TP2912_VIDEO_MODE:
+			ret = sd->ops->video->g_dv_timings(sd, &timings);
+			if(ret < 0) {
+				v4l_err(client, "%s (line %d): failed to get timing. Error = %d\n", __func__, __LINE__, ret);
+				return ret;
+			}
+
+			/* Update video mode */
+			video_mode = ctrl->val;
+
+			/* Update timing */
+			ret = sd->ops->video->s_dv_timings(sd, &timings);
+			if(ret < 0) {
+				v4l_err(client, "%s (line %d): failed to set timing. Error = %d\n", __func__, __LINE__, ret);
+				return ret;
+			}
 		break;
 		default:
 			v4l_err(client, "%s: Unknown control id\n", __func__);
@@ -652,6 +758,17 @@ static const struct v4l2_ctrl_config tp2912_ctrl_diff_mode = {
 	.max = true,
 	.step = 1,
 	.def = false,
+};
+
+static const struct v4l2_ctrl_config tp2912_ctrl_video_mode = {
+	.ops = &tp2912_ctrl_ops,
+	.id = V4L2_CID_TP2912_VIDEO_MODE,
+	.name = "TVI/AHD mode",
+	.type = V4L2_CTRL_TYPE_INTEGER,
+	.min = 0,
+	.max = VIDEO_MODE_NUM - 1,
+	.step = 1,
+	.def = AHD,
 };
 
 static int tp2912_probe(struct i2c_client *client, 
@@ -699,6 +816,7 @@ static int tp2912_probe(struct i2c_client *client,
 	v4l2_ctrl_new_std(hdl, &tp2912_ctrl_ops,
 					  V4L2_CID_GAIN, -128, 127, 1, 0);
 	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_diff_mode, NULL);
+	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_video_mode, NULL);
 
 	ret = tp2912_init(priv);
 	if(ret < 0) {
