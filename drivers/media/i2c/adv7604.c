@@ -170,6 +170,8 @@ struct adv76xx_state {
 	struct gpio_desc *reset_gpio;
 
 	struct v4l2_subdev sd;
+	struct v4l2_device v4l2_dev;
+	struct media_device mdev;
 	struct media_pad pads[ADV76XX_PAD_MAX];
 	unsigned int source_pad;
 
@@ -3512,12 +3514,46 @@ static int adv76xx_probe(struct i2c_client *client,
 	v4l2_info(sd, "%s found @ 0x%x (%s)\n", client->name,
 			client->addr << 1, client->adapter->name);
 
-	err = v4l2_async_register_subdev(sd);
-	if (err)
+	/* Register the v4l2_device structure */
+	err = v4l2_device_register(&client->dev, &state->v4l2_dev);
+	if (err) {
+		v4l_err(client, "%s (line %d): failed register v4l2-device. Error = %d\n", __func__, __LINE__, err);
 		goto err_entity;
+	}
+
+	state->v4l2_dev.ctrl_handler = hdl;
+	state->mdev.dev = &client->dev;
+	state->mdev.hw_revision = 10;
+	strlcpy(state->mdev.model, "ADV7611", sizeof(state->mdev.model));
+	snprintf(state->mdev.bus_info, sizeof(state->mdev.bus_info), "platform:%s",
+		 dev_name(state->mdev.dev));
+
+	media_device_init(&state->mdev);
+
+	err = v4l2_device_register_subdev(&state->v4l2_dev, sd);
+	if (err < 0) {
+		v4l_err(client, "%s (line %d): failed to register subdev. Error = %d\n", __func__, __LINE__, err);
+		goto err_v4l2_device;
+	}
+
+	err = v4l2_device_register_subdev_nodes(&state->v4l2_dev);
+	if (err < 0) {
+		v4l_err(client, "%s (line %d): failed to register subdev nodes. Error = %d\n", __func__, __LINE__, err);
+		goto err_v4l2_device_subdev;
+	}
+
+	err = media_device_register(&state->mdev);
+	if(err) {
+		v4l_err(client, "%s (line %d): failed register media device. Error = %d\n", __func__, __LINE__, err);
+		goto err_v4l2_device_subdev;
+	}
 
 	return 0;
 
+err_v4l2_device_subdev:
+	v4l2_device_unregister_subdev(sd);
+err_v4l2_device:
+	v4l2_device_unregister(&state->v4l2_dev);
 err_entity:
 	media_entity_cleanup(&sd->entity);
 err_work_queues:
