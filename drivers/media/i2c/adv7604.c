@@ -3267,6 +3267,7 @@ static int configure_regmaps(struct adv76xx_state *state)
 	return 0;
 }
 
+#if 0
 static void adv76xx_reset(struct adv76xx_state *state)
 {
 	if (state->reset_gpio) {
@@ -3279,6 +3280,7 @@ static void adv76xx_reset(struct adv76xx_state *state)
 		usleep_range(5000, 10000);
 	}
 }
+#endif
 
 static int adv76xx_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
@@ -3343,12 +3345,12 @@ static int adv76xx_probe(struct i2c_client *client,
 		if (state->hpd_gpio[i])
 			v4l_info(client, "Handling HPD %u GPIO\n", i);
 	}
-	state->reset_gpio = devm_gpiod_get_optional(&client->dev, "reset",
-								GPIOD_OUT_HIGH);
-	if (IS_ERR(state->reset_gpio))
-		return PTR_ERR(state->reset_gpio);
+	// state->reset_gpio = devm_gpiod_get_optional(&client->dev, "reset",
+								// GPIOD_OUT_HIGH);
+	// if (IS_ERR(state->reset_gpio))
+		// return PTR_ERR(state->reset_gpio);
 
-	adv76xx_reset(state);
+	// adv76xx_reset(state);
 
 	state->timings = cea640x480;
 	state->format = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_2X8);
