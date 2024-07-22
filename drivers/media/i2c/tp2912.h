@@ -35,7 +35,7 @@ enum {
 	VIDEO_MODE_NUM
 };
 
-#define TABLE_HEADER_SIZE 1
+#define TABLE_HEADER_SIZE 2
 enum {
 	WIDTH_INDEX = 0,
 	HEIGHT_INDEX,
@@ -455,6 +455,7 @@ enum {
 uint8_t  TP2912_AHD1080P_DataSet[] = {
 	/* Table header */
 	3, /* Column count */
+	25, /* Row count */
 
 	/* Table data */
 	/* Registers     1080P30       1080P25   */
@@ -489,6 +490,7 @@ uint8_t  TP2912_AHD1080P_DataSet[] = {
 uint8_t  TP2912_AHD720P_DataSet[] = {
 	/* Table header */
 	9, /* Column count */
+	26, /* Row count */
 
 	/* Table data */
 	/*               |-----------------------------------------------------|-----------------------------------------------------|
@@ -527,6 +529,7 @@ uint8_t  TP2912_AHD720P_DataSet[] = {
 uint8_t  TP2912_AHD4M_DataSet[] = {
 	/* Table header */
 	5, /* Column count */
+	32, /* Row count */
 
 	/* Table data */
 	/*             |------------------------|--------------------------|
@@ -571,6 +574,7 @@ uint8_t  TP2912_AHD4M_DataSet[] = {
 uint8_t  TP2910_AHD1080P_DataSet[] = {
 	/* Table header */
 	3, /* Column count */
+	18, /* Row count */
 
 	/* Table data */
 	/* Registers     1080P30       1080P25   */
@@ -597,6 +601,7 @@ uint8_t  TP2910_AHD1080P_DataSet[] = {
 uint8_t  TP2910_AHD720P_DataSet[] = {
 	/* Table header */
 	3, /* Column count */
+	13, /* Row count */
 
 	/* Table data */
 	/* Registers     720P30       720P25   */
@@ -618,6 +623,7 @@ uint8_t  TP2910_AHD720P_DataSet[] = {
 uint8_t  TP2912_TVI1080P_DataSet[] = {
 	/* Table header */
 	3, /* Column count */
+	21, /* Row count */
 
 	/* Table data */
 	/* Registers     1080P30       1080P25   */
@@ -647,6 +653,7 @@ uint8_t  TP2912_TVI1080P_DataSet[] = {
 uint8_t  TP2912_TVI720P_DataSet[] = {
 	/* Table header */
 	5, /* Column count */
+	23, /* Row count */
 
 	/* Table data */
 	/* Registers     720P60       720P50         720P30V2       720P25V2 */
@@ -678,6 +685,7 @@ uint8_t  TP2912_TVI720P_DataSet[] = {
 uint8_t TP2912_TVINTSC_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	26, /* Row count */
 
 	/* Table data */
 	REG_MODE,         0x09,
@@ -711,6 +719,7 @@ uint8_t TP2912_TVINTSC_DataSet[] = {
 uint8_t TP2912_TVIPAL_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	28, /* Row count */
 
 	/* Table data */
 	REG_MODE,         0x1a,
@@ -746,6 +755,7 @@ uint8_t TP2912_TVIPAL_DataSet[] = {
 uint8_t TP2912_TVI8M15_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	29, /* Row count */
 
 	/* Table data */
 	REG_MODE,         0x8b,
@@ -782,6 +792,7 @@ uint8_t TP2912_TVI8M15_DataSet[] = {
 uint8_t TP2912_TVI8M125_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	29, /* Row count */
 
 	/* Table data */
 	REG_MODE,         0x8b,
@@ -818,6 +829,7 @@ uint8_t TP2912_TVI8M125_DataSet[] = {
 uint8_t TP2912_TVI5M20_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	29, /* Row count */
 
 	/* Table data */
 	REG_MODE,         0x8b,
@@ -854,6 +866,7 @@ uint8_t TP2912_TVI5M20_DataSet[] = {
 uint8_t TP2912_TVI4M_DataSet[] = {
 	/* Table header */
 	3, /* Column count */
+	29, /* Row count */
 
 	/* Table data */
 	/*             |------------------------|
@@ -895,6 +908,7 @@ uint8_t TP2912_TVI4M_DataSet[] = {
 uint8_t TP2912B_TVI1080P60_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	35, /* Row count */
 
 	/* Table data */
 	/* Registers     1080P60 */
@@ -938,6 +952,7 @@ uint8_t TP2912B_TVI1080P60_DataSet[] = {
 uint8_t TP2912B_TVI1080P3025_DataSet[] = {
 	/* Table header */
 	3, /* Column count */
+	27, /* Row count */
 
 	/* Table data */
 	/* Registers     1080P30       1080P25   */
@@ -973,6 +988,7 @@ uint8_t TP2912B_TVI1080P3025_DataSet[] = {
 uint8_t TP2912B_TVI720P_DataSet[] = {
 	/* Table header */
 	5, /* Column count */
+	27, /* Row count */
 
 	/* Table data */
 	/* Registers     720P60      720P50        720P30V2     720P25V2 */
@@ -1008,6 +1024,7 @@ uint8_t TP2912B_TVI720P_DataSet[] = {
 uint8_t TP2912B_TVINTSC_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	31, /* Row count */
 
 	/* Table data */
 	/* Registers     NTSC */
@@ -1047,6 +1064,7 @@ uint8_t TP2912B_TVINTSC_DataSet[] = {
 uint8_t TP2912B_TVIPAL_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	31, /* Row count */
 
 	/* Table data */
 	/* Registers     PAL */
@@ -1086,6 +1104,7 @@ uint8_t TP2912B_TVIPAL_DataSet[] = {
 uint8_t TP2912B_TVI8M125_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	35, /* Row count */
 
 	/* Table data */
 	/* Registers     8M125 */
@@ -1129,6 +1148,7 @@ uint8_t TP2912B_TVI8M125_DataSet[] = {
 uint8_t TP2912B_TVI5M20_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	35, /* Row count */
 
 	/* Table data */
 	/* Registers     5M20 */
@@ -1172,6 +1192,7 @@ uint8_t TP2912B_TVI5M20_DataSet[] = {
 uint8_t TP2912B_TVI4M_DataSet[] = {
 	/* Table header */
 	3, /* Column count */
+	35, /* Row count */
 
 	/* Table data */
 	/* Registers     4M30          4M25 */
@@ -1215,6 +1236,7 @@ uint8_t TP2912B_TVI4M_DataSet[] = {
 uint8_t TP2910_TVI1080P_DataSet[] = {
 	/* Table header */
 	3, /* Column count */
+	12, /* Row count */
 
 	/* Table data */
 	/* Registers     1080P30      1080P25 */
@@ -1235,6 +1257,7 @@ uint8_t TP2910_TVI1080P_DataSet[] = {
 uint8_t TP2910_TVI720P_DataSet[] = {
 	/* Table header */
 	5, /* Column count */
+	12, /* Row count */
 
 	/* Table data */
 	/* Registers     720P60      720P50       720P30       720P25 */
@@ -1255,6 +1278,7 @@ uint8_t TP2910_TVI720P_DataSet[] = {
 uint8_t TP2910_TVINTSC_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	18, /* Row count */
 
 	/* Table data */
 	/* Registers     NTSC */
@@ -1281,6 +1305,7 @@ uint8_t TP2910_TVINTSC_DataSet[] = {
 uint8_t TP2910_TVIPAL_DataSet[] = {
 	/* Table header */
 	2, /* Column count */
+	18, /* Row count */
 
 	/* Table data */
 	/* Registers     PAL */
@@ -1307,6 +1332,7 @@ uint8_t TP2910_TVIPAL_DataSet[] = {
 uint64_t tp2912_parent_table[] = {
 /* Table header */
 	7, /* Column count */
+	43, /* Row count */
 
 /* Table data */
 /* width         height         fps                chipid  bitmask                         TVI/AHD                   table                        column */

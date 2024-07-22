@@ -30,7 +30,7 @@
 
 #include "tp2912.h"
 
-static int debug;
+static int debug = 0;
 static int video_mode = AHD;
 static bool diff_mode = false;
 static bool test_pattern = false;
@@ -45,6 +45,8 @@ MODULE_LICENSE("GPL v2");
 
 struct tp2912_priv {
 	uint8_t chipid;
+	struct v4l2_device v4l2_dev;
+	struct media_device mdev;
 	struct v4l2_subdev sd;
 	struct media_pad pad;
 	struct v4l2_ctrl_handler hdl;
@@ -62,7 +64,6 @@ static int __attribute__((unused)) tp2912_read (struct tp2912_priv *priv, uint8_
 	int ret;
 	struct v4l2_subdev *sd = &priv->sd;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
-
 
 	ret = i2c_smbus_read_byte_data(client, reg);
 	if (ret < 0) {
@@ -98,7 +99,7 @@ static int tp2912_modify(struct tp2912_priv *priv, uint8_t reg,
 
 	ret = tp2912_read(priv, reg);
 	if(ret < 0) {
-		v4l_err(client, "%s (line %d): failed to read register 0x%08x. Error = %d\n", __func__, __LINE__, reg, ret);
+		v4l_err(client, "%s (line %d): failed to read register 0x%02x. Error = %d\n", __func__, __LINE__, reg, ret);
 		return ret;
 	}
 
@@ -108,7 +109,7 @@ static int tp2912_modify(struct tp2912_priv *priv, uint8_t reg,
 
 	ret = tp2912_write(priv, reg, val);
 	if(ret < 0) {
-		v4l_err(client, "%s (line %d): failed to write register 0x%08x. Error = %d\n", __func__, __LINE__, reg, ret);
+		v4l_err(client, "%s (line %d): failed to write register 0x%02x. Error = %d\n", __func__, __LINE__, reg, ret);
 		return ret;
 	}
 
@@ -139,20 +140,18 @@ static int tp2912_write_table (struct tp2912_priv *priv, uint8_t *table, uint8_t
 	struct v4l2_subdev *sd = &priv->sd;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	uint8_t col_count, row_count;
-	int data_size;
 	uint8_t *data;
 	int row;
 
-	data_size = sizeof(table) / sizeof(table[0]) - TABLE_HEADER_SIZE;
 	col_count = table[0];
-	row_count =  data_size / col_count;
+	row_count =  table[1];
 	data = &table[TABLE_HEADER_SIZE];
 
-	v4l2_dbg(2, debug, client, "%s (line %d): col_count = %d, row_count = %d\n", __func__, __LINE__,
-			 col_count, row_count);
+	v4l2_dbg(2, debug, client, "%s (line %d): col_count = %d, row_count = %d sizeof(table) = %ld\n", __func__, __LINE__,
+			 col_count, row_count, sizeof(table));
 
 	for (row = 0; row < row_count; row++) {
-		v4l2_dbg(2, debug, client, "%s (line %d): write value 0x%08x to register 0x%08x\n", __func__, __LINE__,
+		v4l2_dbg(2, debug, client, "%s (line %d): write value 0x%02x to register 0x%02x\n", __func__, __LINE__,
 				data[row * col_count + col], data[row * col_count]);
 
 		ret = i2c_smbus_write_byte_data(client, data[row * col_count], data[row * col_count + col]);
@@ -501,6 +500,14 @@ static uint8_t *tp2912_find_table(struct tp2912_priv *priv,
 	col_count = tp2912_parent_table[0];
 	row_count = data_size / col_count;
 
+	v4l2_dbg(2, debug, client, "%s (line %d): col_count = %lld, row_count = %lld sizeof(tp2912_parent_table) = %ld\n", __func__, __LINE__,
+			 col_count, row_count, sizeof(tp2912_parent_table));
+
+	if(row_count != tp2912_parent_table[1]) {
+		v4l_warn(client, "%s (line %d): tp2912_parent_table has %lld row(s), but header info gives %lld row(s)\n",
+				 __func__, __LINE__, row_count, tp2912_parent_table[1]);
+	}
+
 	for(row = 0; row < row_count; row++) {
 		for(col = 0; col < TABLE_INDEX; col++) {
 			i = col + row * col_count;
@@ -519,10 +526,10 @@ static uint8_t *tp2912_find_table(struct tp2912_priv *priv,
 		}
 
 		if(col == TABLE_INDEX) {
-			v4l2_dbg(2, debug, client, "%s (line %d): GOT row = %d, col = %d, chipid = %d \n", __func__, __LINE__,
-					 row, col, chipid);
-			*out_col = data[i + 1];
-			return (uint8_t *)data[i];
+			*out_col = data[COL_INDEX + row * col_count];
+			v4l2_dbg(2, debug, client, "%s (line %d): GOT row = %d, out_col = %d, chipid = %d, table address = 0x%llx\n", __func__, __LINE__,
+					 row, *out_col, chipid, data[TABLE_INDEX + row * col_count]);
+			return (uint8_t *)data[TABLE_INDEX + row * col_count];
 		}
 	}
 
@@ -541,6 +548,11 @@ static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 	int ret;
 
 	v4l2_dbg(1, debug, sd, "%s:\n", __func__);
+
+	if (debug > 1) {
+		v4l2_print_dv_timings(sd->name, "tp2912_s_dv_timings: ",
+						  timings, true);
+	}
 
 	if (!v4l2_valid_dv_timings(timings, &tp2912_timings_cap, NULL, NULL)) {
 		v4l_err(client, "%s (line %d): timing is not valid\n", __func__, __LINE__);
@@ -562,10 +574,11 @@ static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 		return ret;
 	}
 
-	fps = (u32)bt->pixelclock / (V4L2_DV_BT_FRAME_WIDTH(bt) * V4L2_DV_BT_FRAME_HEIGHT(bt));
-	table = tp2912_find_table(priv, bt->width, bt->height, fps, video_mode, priv->chipid, &col);
+	fps = DIV_ROUND_CLOSEST_ULL(bt->pixelclock, 
+								(uint32_t)(V4L2_DV_BT_FRAME_WIDTH(bt) * V4L2_DV_BT_FRAME_HEIGHT(bt)));
+	table = tp2912_find_table(priv, bt->width, bt->height, fps, priv->chipid, video_mode, &col);
 	if(!table) {
-		v4l_err(client, "%s (line %d): failed to lookup table for %s video %dx%d@fps = %d\n", __func__, __LINE__, 
+		v4l_err(client, "%s (line %d): failed to lookup table for %s video %dx%d@%dHz\n", __func__, __LINE__, 
 				video_mode == TVI ? "TVI" : "AHD", bt->width, bt->height, fps);
 		return -ENODEV;
 	}
@@ -620,7 +633,7 @@ static int tp2912_g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *r
 
 	ret = tp2912_read(priv, reg->reg);
 	if(ret < 0) {
-		v4l_err(client, "%s (line %d): failed to read register 0x%08x. Error = %d\n", __func__, __LINE__, (uint8_t)reg->reg, ret);
+		v4l_err(client, "%s (line %d): failed to read register 0x%02x. Error = %d\n", __func__, __LINE__, (uint8_t)reg->reg, ret);
 		return ret;
 	}
 
@@ -639,7 +652,7 @@ static int tp2912_s_register(struct v4l2_subdev *sd, const struct v4l2_dbg_regis
 
 	ret = tp2912_write(priv, reg->reg, reg->val);
 	if(ret < 0) {
-		v4l_err(client, "%s (line %d): failed to write register at 0x%08x. Error = %d\n", __func__, __LINE__, (uint8_t)reg->reg, ret);
+		v4l_err(client, "%s (line %d): failed to write register at 0x%02x. Error = %d\n", __func__, __LINE__, (uint8_t)reg->reg, ret);
 		return ret;
 	}
 
@@ -778,6 +791,8 @@ static int tp2912_probe(struct i2c_client *client,
 	struct tp2912_priv *priv;
 	struct v4l2_ctrl_handler *hdl;
 	struct v4l2_subdev *sd;
+	static const struct v4l2_dv_timings default_timing =
+						 V4L2_DV_BT_CEA_1280X720P30;
 
 	/* Check if the adapter supports the needed features */
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
@@ -790,8 +805,10 @@ static int tp2912_probe(struct i2c_client *client,
 	if (priv == NULL)
 		return -ENOMEM;
 
+	priv->dv_timings = default_timing;
 	sd = &priv->sd;
 	hdl = &priv->hdl;
+	
 	v4l2_i2c_subdev_init(sd, client, &tp2912_ops);
 
 	priv->pad.flags = MEDIA_PAD_FL_SINK;
@@ -802,6 +819,7 @@ static int tp2912_probe(struct i2c_client *client,
 	}
 
 	sd->ctrl_handler = hdl;
+	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 
 	ret = v4l2_ctrl_handler_init(hdl, 2);
 	if (ret) {
@@ -824,8 +842,52 @@ static int tp2912_probe(struct i2c_client *client,
 		goto error_2;
 	}
 
+	ret = v4l2_ctrl_handler_setup(hdl);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed v4l2_ctrl_handler_setup(). Error = %d\n", __func__, __LINE__, ret);
+		goto error_1;
+	}
+
+	/* Register the v4l2_device structure */
+	ret = v4l2_device_register(&client->dev, &priv->v4l2_dev);
+	if (ret) {
+		v4l_err(client, "%s (line %d): failed register v4l2-device. Error = %d\n", __func__, __LINE__, ret);
+		goto error_2;
+	}
+
+	priv->v4l2_dev.ctrl_handler = hdl;
+	priv->mdev.dev = &client->dev;
+	priv->mdev.hw_revision = 10;
+	strlcpy(priv->mdev.model, "TP2912", sizeof(priv->mdev.model));
+	snprintf(priv->mdev.bus_info, sizeof(priv->mdev.bus_info), "platform:%s",
+		 dev_name(priv->mdev.dev));
+
+	media_device_init(&priv->mdev);
+
+	ret = v4l2_device_register_subdev(&priv->v4l2_dev, sd);
+	if (ret < 0) {
+		v4l_err(client, "%s (line %d): failed to register subdev. Error = %d\n", __func__, __LINE__, ret);
+		goto error_3;
+	}
+
+	ret = v4l2_device_register_subdev_nodes(&priv->v4l2_dev);
+	if (ret < 0) {
+		v4l_err(client, "%s (line %d): failed to register subdev nodes. Error = %d\n", __func__, __LINE__, ret);
+		goto error_4;
+	}
+
+	ret = media_device_register(&priv->mdev);
+	if(ret) {
+		v4l_err(client, "%s (line %d): failed register media device. Error = %d\n", __func__, __LINE__, ret);
+		goto error_4;
+	}
+
 	return ret; 
 
+error_4:
+	v4l2_device_unregister_subdev(sd);
+error_3:
+	v4l2_device_unregister(&priv->v4l2_dev);
 error_2:
 	v4l2_ctrl_handler_free(hdl);
 error_1:
@@ -835,6 +897,13 @@ error_1:
 
 static int tp2912_remove(struct i2c_client *client)
 {
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct tp2912_priv *priv = sd_to_priv(sd);
+	struct v4l2_ctrl_handler *hdl = &priv->hdl;
+
+	v4l2_device_unregister(&priv->v4l2_dev);
+	v4l2_ctrl_handler_free(hdl);
+	media_entity_cleanup(&sd->entity);
 	return 0;
 }
 static const struct i2c_device_id tp2912_id[] = {
