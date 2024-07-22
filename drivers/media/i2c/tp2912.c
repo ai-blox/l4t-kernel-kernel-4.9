@@ -31,7 +31,7 @@
 #include "tp2912.h"
 
 static int debug = 0;
-static int video_mode = AHD;
+static int video_mode = TVI;
 static bool diff_mode = false;
 static bool test_pattern = false;
 module_param(debug, int, 0644);
@@ -512,10 +512,16 @@ static uint8_t *tp2912_find_table(struct tp2912_priv *priv,
 		for(col = 0; col < TABLE_INDEX; col++) {
 			i = col + row * col_count;
 
-			if((col == CHIPID_BITMASK_INDEX) && !(data[i] & input[col])) {
-				v4l2_dbg(2, debug, client, "%s (line %d): row = %d, col = %d, chipid = %d \n", __func__, __LINE__,
-						 row, col, chipid);
-				break;
+			if((col == CHIPID_BITMASK_INDEX)) {
+				if(!(data[i] & input[col])) {
+					v4l2_dbg(2, debug, client, "%s (line %d): row = %d, col = %d, chipid = %d \n", __func__, __LINE__,
+							row, col, chipid);
+					break;
+				} else {
+					v4l2_dbg(2, debug, client, "%s (line %d): row = %d, col = %d, chipid = %d \n", __func__, __LINE__,
+							row, col, chipid);
+					continue;
+				}
 			}
 
 			if(data[i] != input[col]) {
