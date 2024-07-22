@@ -3100,7 +3100,7 @@ static int adv76xx_parse_dt(struct adv76xx_state *state)
 
 	/* Use the default I2C addresses. */
 	state->pdata.i2c_addresses[ADV7604_PAGE_AVLINK] = 0x42;
-	state->pdata.i2c_addresses[ADV76XX_PAGE_CEC] = 0x40;
+	state->pdata.i2c_addresses[ADV76XX_PAGE_CEC] = 0x41;
 	state->pdata.i2c_addresses[ADV76XX_PAGE_INFOFRAME] = 0x3e;
 	state->pdata.i2c_addresses[ADV7604_PAGE_ESDP] = 0x38;
 	state->pdata.i2c_addresses[ADV7604_PAGE_DPP] = 0x3c;
