@@ -30,14 +30,12 @@
 
 #include "tp2912.h"
 
-static int debug = 0;
-static int video_mode = TVI;
+static int debug = 2;
+static int video_mode;
 static bool diff_mode = false;
-static bool test_pattern = false;
+static bool test_pattern;
 module_param(debug, int, 0644);
-module_param(video_mode, int, 0644);
 module_param(diff_mode, bool, 0644);
-module_param(test_pattern, bool, 0644);
 MODULE_PARM_DESC(debug, "debug level (0-2)");
 MODULE_DESCRIPTION("TP2912 - Untra High Definition HD-TVI Video Encoder driver");
 MODULE_AUTHOR("Nari");
@@ -104,8 +102,17 @@ static int tp2912_modify(struct tp2912_priv *priv, uint8_t reg,
 	}
 
 	val = (uint8_t)ret;
+	if(reg == REG_MODE) {
+		v4l_info(client, "ret = 0x%02x val = 0x%02x", ret, val);
+	}
 	val &= ~clear;
+	if(reg == REG_MODE) {
+		v4l_info(client, "ret = 0x%02x val = 0x%02x", ret, val);
+	}
 	val |= set;
+	if(reg == REG_MODE) {
+		v4l_info(client, "ret = 0x%02x val = 0x%02x", ret, val);
+	}
 
 	ret = tp2912_write(priv, reg, val);
 	if(ret < 0) {
@@ -595,6 +602,18 @@ static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 		return ret;
 	}
 
+	/* Output test pattern if enabled */
+	if(test_pattern) {
+		ret = tp2912_modify(priv, REG_MODE, 
+									test_pattern ? 0 : BIT(6),
+									test_pattern ? BIT(6) : 0 
+						);
+		if(ret < 0) {
+			v4l_err(client, "%s (line %d): failed to write register REG_MODE. Error = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+	}
+
 	return 0;
 }
 
@@ -787,7 +806,7 @@ static const struct v4l2_ctrl_config tp2912_ctrl_video_mode = {
 	.min = 0,
 	.max = VIDEO_MODE_NUM - 1,
 	.step = 1,
-	.def = AHD,
+	.def = TVI,
 };
 
 static int tp2912_probe(struct i2c_client *client, 
@@ -836,7 +855,7 @@ static int tp2912_probe(struct i2c_client *client,
 	v4l2_ctrl_new_std_menu_items(hdl, &tp2912_ctrl_ops,
 								 V4L2_CID_TEST_PATTERN,
 								 ARRAY_SIZE(tp2912_test_pattern_menu) - 1, 0,
-								 0, tp2912_test_pattern_menu);
+								 1 /* def */, tp2912_test_pattern_menu);
 	v4l2_ctrl_new_std(hdl, &tp2912_ctrl_ops,
 					  V4L2_CID_GAIN, -128, 127, 1, 0);
 	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_diff_mode, NULL);
