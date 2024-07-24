@@ -924,6 +924,14 @@ static void smsc95xx_init_mac_address(struct usbnet *dev)
 		return;
 	}
 
+	if(nvmem_get_mac_address(dev, mac_addr) == 0) {
+		if (is_valid_ether_addr(mac_addr)) {
+			memcpy(dev->net->dev_addr, mac_addr, ETH_ALEN);
+			netif_dbg(dev, ifup, dev->net, "MAC address read from EEPROM module\n");
+			return;
+		}
+	}
+
 	/* try reading mac address from EEPROM */
 	if (smsc95xx_read_eeprom(dev, EEPROM_MAC_OFFSET, ETH_ALEN,
 			dev->net->dev_addr) == 0) {
