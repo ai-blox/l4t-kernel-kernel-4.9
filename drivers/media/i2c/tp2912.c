@@ -50,7 +50,7 @@ struct tp2912_priv {
 	struct v4l2_ctrl_handler hdl;
 	struct v4l2_dv_timings dv_timings;
 	bool power_on;
-};
+} * priv;
 
 static inline struct tp2912_priv *sd_to_priv(struct v4l2_subdev *sd)
 {
@@ -549,13 +549,33 @@ static uint8_t *tp2912_find_table(struct tp2912_priv *priv,
 	return NULL;
 }
 
+static bool tp2912_check_dv_timings(const struct v4l2_dv_timings *timing, void *hdl)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&priv->sd);
+	const struct v4l2_bt_timings *bt = &timing->bt;
+	uint32_t fps;
+	uint8_t *table;
+	uint8_t col;
+
+	fps = DIV_ROUND_CLOSEST_ULL(bt->pixelclock, 
+								(uint32_t)(V4L2_DV_BT_FRAME_WIDTH(bt) * V4L2_DV_BT_FRAME_HEIGHT(bt)));
+	table = tp2912_find_table(priv, bt->width, bt->height, fps, priv->chipid, video_mode, &col);
+	if(!table) {
+		v4l_err(client, "%s (line %d): failed to lookup table for %s video %dx%d@%dHz\n", __func__, __LINE__, 
+				video_mode == TVI ? "TVI" : "AHD", bt->width, bt->height, fps);
+		return false;
+	}
+
+	return true;
+}
+
 static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 			       struct v4l2_dv_timings *timings)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct tp2912_priv *priv = sd_to_priv(sd);
 	struct v4l2_bt_timings *bt = &timings->bt;
-	u32 fps;
+	uint32_t fps;
 	uint8_t *table;
 	uint8_t col;
 	int ret;
@@ -567,7 +587,7 @@ static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 						  timings, true);
 	}
 
-	if (!v4l2_valid_dv_timings(timings, &tp2912_timings_cap, NULL, NULL)) {
+	if (!v4l2_valid_dv_timings(timings, &tp2912_timings_cap, tp2912_check_dv_timings, NULL)) {
 		v4l_err(client, "%s (line %d): timing is not valid\n", __func__, __LINE__);
 		return -EINVAL;
 	}
@@ -715,11 +735,53 @@ static const struct v4l2_subdev_core_ops tp2912_core_ops = {
 	.interrupt_service_routine = NULL,
 };
 
+static int tp2912_dv_timings_cap(struct v4l2_subdev *sd,
+			struct v4l2_dv_timings_cap *cap)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+
+	if (cap->pad != 0) {
+		v4l_err(client, "%s (line %d): checked if cap->pad == 0, and found cap->pad == %d\n", __func__, __LINE__, cap->pad);
+		return -EINVAL;
+	}
+
+	*cap = tp2912_timings_cap;
+
+	return 0;
+}
+
+static int tp2912_enum_dv_timings(struct v4l2_subdev *sd,
+			struct v4l2_enum_dv_timings *timings)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	int ret = 0;
+
+	if (timings->pad != 0) {
+		v4l_err(client, "%s (line %d): checked if timings->pad == 0, and found timings->pad == %d\n", __func__, __LINE__, timings->pad);
+		return -EINVAL;
+	}
+
+	ret= v4l2_enum_dv_timings_cap(timings,
+								  &tp2912_timings_cap,
+								  tp2912_check_dv_timings, NULL);
+	if (ret < 0) {
+		v4l_err(client, "%s (line %d): v4l2_enum_dv_timings_cap() failed. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
+	return ret;
+}
+
+static const struct v4l2_subdev_pad_ops tp2912_pad_ops = {
+	.dv_timings_cap = tp2912_dv_timings_cap,
+	.enum_dv_timings = tp2912_enum_dv_timings,
+};
+
 static const struct v4l2_subdev_ops tp2912_ops = {
 	.core	= &tp2912_core_ops,
 	.video	= &tp2912_video_ops,
+	.pad	= &tp2912_pad_ops,
 };
-
 
 static const char * const tp2912_test_pattern_menu[] = {
 	"Disabled",
@@ -813,7 +875,6 @@ static int tp2912_probe(struct i2c_client *client,
 						const struct i2c_device_id *id)
 {
 	int ret = 0;
-	struct tp2912_priv *priv;
 	struct v4l2_ctrl_handler *hdl;
 	struct v4l2_subdev *sd;
 	static const struct v4l2_dv_timings default_timing =
