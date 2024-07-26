@@ -1936,7 +1936,7 @@ static int adv76xx_set_format(struct v4l2_subdev *sd,
 
 	info = adv76xx_format_info(state, format->format.code);
 	if (info == NULL)
-		info = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_2X8);
+		info = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_1X16);
 
 	adv76xx_fill_format(state, &format->format);
 	format->format.code = info->code;
@@ -3287,8 +3287,8 @@ static void adv76xx_reset(struct adv76xx_state *state)
 static int adv76xx_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
-	static const struct v4l2_dv_timings cea640x480 =
-		V4L2_DV_BT_CEA_640X480P59_94;
+	static const struct v4l2_dv_timings def_timing =
+		V4L2_DV_BT_CEA_1280X720P60;
 	struct adv76xx_state *state;
 	struct v4l2_ctrl_handler *hdl;
 	struct v4l2_ctrl *ctrl;
@@ -3354,8 +3354,8 @@ static int adv76xx_probe(struct i2c_client *client,
 
 	// adv76xx_reset(state);
 
-	state->timings = cea640x480;
-	state->format = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_2X8);
+	state->timings = def_timing;
+	state->format = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_1X16);
 
 	sd = &state->sd;
 	v4l2_i2c_subdev_init(sd, client, &adv76xx_ops);
