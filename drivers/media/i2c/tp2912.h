@@ -54,6 +54,8 @@ enum {
 #define TP2912_MIN_PIXELCLOCK 20000000
 #define TP2912_MAX_PIXELCLOCK 225000000
 
+#define LINE_NUM_INTR 640
+
 /* Clock Control Register */
 #define REG_CLK 0x00
 
@@ -294,9 +296,9 @@ enum {
 #define REG_INTCTRL 0x6B
 
 /* Line Count INT Register */
-#define REG_INTLINE_4 0x6B
-#define REG_INTLINE_3 0x6C
-#define REG_INTLINE_2 0x6D
+#define REG_INTLINE_3 0x6D
+#define REG_INTLINE_2 0x6B
+#define REG_INTLINE_1 0x6C
 
 /* INT Mode Register */
 #define REG_INTMODE 0x6D

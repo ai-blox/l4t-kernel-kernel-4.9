@@ -400,6 +400,7 @@ static int tp2912_init(struct tp2912_priv *priv) {
 	int ret = 0;
 	struct v4l2_subdev *sd = &priv->sd;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	uint32_t line_num = LINE_NUM_INTR;
 
 	ret = tp2912_chipid(priv);
 	if(ret < 0) {
@@ -473,6 +474,41 @@ static int tp2912_init(struct tp2912_priv *priv) {
 					);
 	if(ret < 0) {
 		v4l_err(client, "%s (line %d): failed to write register REG_MODE. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
+	/* Interrupt configuration */
+	ret = tp2912_modify(priv, REG_INTMODE, 
+								0,
+								BIT(2) /* All bits in REG_INT_STATUS is clear after REG_INT_STATUS is read */
+					);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write register REG_INT_STATUS. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
+	if(line_num > TP2912_MAX_WIDTH) {
+		v4l_warn(client, "%s (line %d): line_num (%d) exceeds max TP2912_MAX_WIDTH (%d).\n   \
+		Set line_num to %d\n", __func__, __LINE__, line_num, TP2912_MAX_WIDTH, TP2912_MAX_WIDTH);
+		line_num = TP2912_MAX_WIDTH;
+	}
+
+	/* Write line count */
+	ret = tp2912_modify(priv, REG_INTLINE_3, BIT(3), ((line_num >> 11) & 0x01) << 3);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write to register REG_INTLINE_3. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
+	ret = tp2912_modify(priv, REG_INTLINE_2, 0x07, (line_num >> 8) & 0x07);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write to register REG_INTLINE_2. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
+	ret = tp2912_write(priv, REG_INTLINE_1, line_num & 0xFF);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write to register REG_INTLINE_1. Error = %d\n", __func__, __LINE__, ret);
 		return ret;
 	}
 
@@ -662,9 +698,60 @@ static const struct v4l2_subdev_video_ops tp2912_video_ops = {
 
 static int tp2912_log_status(struct v4l2_subdev *sd)
 {
-	struct i2c_client __attribute__((unused)) *client = v4l2_get_subdevdata(sd);
-	struct tp2912_priv __attribute__((unused)) *priv = sd_to_priv(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct tp2912_priv *priv = sd_to_priv(sd);
+	int ret;
+	uint8_t intr_status;
+	uint8_t rx_line;
 
+	/* Read interrupt status register */
+	ret = tp2912_read(priv, REG_INT_STATUS);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to read register REG_INT_STATUS. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+	intr_status = (uint8_t)ret;
+
+	ret = tp2912_read(priv, REG_RXLINE_STATUS);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to read register REG_RXLINE_STATUS. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+	rx_line = (uint8_t)ret;
+
+	v4l_info(client, "=== Configured video info ===\n \
+			Video signal: %s\n \
+			Output mode: %s \n\n",
+			video_mode == TVI ? "TVI" : "AHD",
+			diff_mode == true ? "Differential" : "Single-ended");
+
+	v4l_info(client, "=== Interrupt status ===\n \
+			LINEINT (general-purpose line interrupt): %s \n\
+			TXINT (TX data transmit): %s \n\
+			RXINT (RX data transmit): %s\n\n",
+			intr_status & BIT(2) ? "yes" : "no",
+			intr_status & BIT(1) ? "yes" : "no",
+			intr_status & BIT(0) ? "yes" : "no");
+
+	v4l_info(client, "=== RX line receive status ===\n \
+			Line 8: %s \n\
+			Line 7: %s \n\
+			Line 6: %s \n\
+			Line 5: %s \n\
+			Line 4: %s \n\
+			Line 3: %s \n\
+			Line 2: %s \n\
+			Line 1: %s \n\n",
+			rx_line & BIT(7) ? "yes" : "no",
+			rx_line & BIT(6) ? "yes" : "no",
+			rx_line & BIT(5) ? "yes" : "no",
+			rx_line & BIT(4) ? "yes" : "no",
+			rx_line & BIT(3) ? "yes" : "no",
+			rx_line & BIT(2) ? "yes" : "no",
+			rx_line & BIT(1) ? "yes" : "no",
+			rx_line & BIT(0) ? "yes" : "no");
+
+	
 	return 0;
 }
 
