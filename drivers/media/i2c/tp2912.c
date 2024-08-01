@@ -965,7 +965,7 @@ static int tp2912_probe(struct i2c_client *client,
 	struct v4l2_ctrl_handler *hdl;
 	struct v4l2_subdev *sd;
 	static const struct v4l2_dv_timings default_timing =
-						 V4L2_DV_BT_CEA_1280X720P30;
+						 V4L2_DV_BT_CEA_1280X720P60;
 
 	/* Check if the adapter supports the needed features */
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
