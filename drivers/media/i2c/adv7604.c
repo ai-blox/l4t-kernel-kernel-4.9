@@ -3287,7 +3287,7 @@ static void adv76xx_reset(struct adv76xx_state *state)
 static int adv76xx_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
-	static const struct v4l2_dv_timings def_timing =
+	static struct v4l2_dv_timings def_timing =
 		V4L2_DV_BT_CEA_1280X720P60;
 	struct adv76xx_state *state;
 	struct v4l2_ctrl_handler *hdl;
@@ -3354,7 +3354,6 @@ static int adv76xx_probe(struct i2c_client *client,
 
 	// adv76xx_reset(state);
 
-	state->timings = def_timing;
 	state->format = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_1X16);
 
 	sd = &state->sd;
@@ -3539,6 +3538,13 @@ static int adv76xx_probe(struct i2c_client *client,
 	err = v4l2_device_register_subdev_nodes(&state->v4l2_dev);
 	if (err < 0) {
 		v4l_err(client, "%s (line %d): failed to register subdev nodes. Error = %d\n", __func__, __LINE__, err);
+		goto err_v4l2_device_subdev;
+	}
+
+	/* Update timing */
+	err = sd->ops->video->s_dv_timings(sd, &def_timing);
+	if(err < 0) {
+		v4l_err(client, "%s (line %d): failed to set timing. Error = %d\n", __func__, __LINE__, err);
 		goto err_v4l2_device_subdev;
 	}
 
