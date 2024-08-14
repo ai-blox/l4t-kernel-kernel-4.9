@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/videodev2.h>
 #include <linux/v4l2-dv-timings.h>
+#include <linux/gpio/consumer.h>
 
 #include <media/v4l2-device.h>
 #include <media/v4l2-ctrls.h>
@@ -33,9 +34,9 @@
 static int debug = 2;
 static int video_mode;
 static bool diff_mode = false;
+static bool current_mode = false;
 static bool test_pattern;
 module_param(debug, int, 0644);
-module_param(diff_mode, bool, 0644);
 MODULE_PARM_DESC(debug, "debug level (0-2)");
 MODULE_DESCRIPTION("TP2912 - Untra High Definition HD-TVI Video Encoder driver");
 MODULE_AUTHOR("Nari");
@@ -43,6 +44,7 @@ MODULE_LICENSE("GPL v2");
 
 struct tp2912_priv {
 	uint8_t chipid;
+	struct gpio_desc *gpiod_fhd;
 	struct v4l2_device v4l2_dev;
 	struct media_device mdev;
 	struct v4l2_subdev sd;
@@ -376,6 +378,16 @@ static int tp2912_set_output_mode(struct tp2912_priv *priv) {
 				return ret;
 			}
 		}
+
+		/* Current mode or voltage mode */
+		ret = tp2912_modify(priv, REG_TXDRIVER_3, 
+									BIT(3), 
+									current_mode ? 0 : BIT(3)
+							);
+		if(ret < 0) {
+			v4l_err(client, "%s (line %d): failed to write register REG_TXDRIVER_3. Error = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
 	} else if(priv->chipid == TP2910){
 		ret = tp2912_write(priv, REG_TXDRIVER_3, 0x08);
 		if(ret < 0) {
@@ -530,7 +542,7 @@ static const struct v4l2_dv_timings_cap tp2912_timings_cap = {
 static uint8_t *tp2912_find_table(struct tp2912_priv *priv, 
 							   int width, int height, int fps, 
 							   uint8_t chipid,
-							   uint8_t mode, uint8_t *out_col) {
+							   uint8_t mode, uint8_t *out_col, uint8_t *out_fhd_en) {
 	struct v4l2_subdev *sd = &priv->sd;
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	uint64_t col_count, row_count, data_size;
@@ -576,8 +588,9 @@ static uint8_t *tp2912_find_table(struct tp2912_priv *priv,
 
 		if(col == TABLE_INDEX) {
 			*out_col = data[COL_INDEX + row * col_count];
-			v4l2_dbg(2, debug, client, "%s (line %d): GOT row = %d, out_col = %d, chipid = %d, table address = 0x%llx\n", __func__, __LINE__,
-					 row, *out_col, chipid, data[TABLE_INDEX + row * col_count]);
+			*out_fhd_en = data[FHD_EN_INDEX + row * col_count];
+			v4l2_dbg(2, debug, client, "%s (line %d): GOT row = %d, out_col = %d, out_fhd_en = %d, chipid = %d, table address = 0x%llx\n", __func__, __LINE__,
+					 row, *out_col, *out_fhd_en, chipid, data[TABLE_INDEX + row * col_count]);
 			return (uint8_t *)data[TABLE_INDEX + row * col_count];
 		}
 	}
@@ -591,11 +604,11 @@ static bool tp2912_check_dv_timings(const struct v4l2_dv_timings *timing, void *
 	const struct v4l2_bt_timings *bt = &timing->bt;
 	uint32_t fps;
 	uint8_t *table;
-	uint8_t col;
+	uint8_t col, fhd_en;
 
 	fps = DIV_ROUND_CLOSEST_ULL(bt->pixelclock, 
 								(uint32_t)(V4L2_DV_BT_FRAME_WIDTH(bt) * V4L2_DV_BT_FRAME_HEIGHT(bt)));
-	table = tp2912_find_table(priv, bt->width, bt->height, fps, priv->chipid, video_mode, &col);
+	table = tp2912_find_table(priv, bt->width, bt->height, fps, priv->chipid, video_mode, &col, &fhd_en);
 	if(!table) {
 		v4l_err(client, "%s (line %d): failed to lookup table for %s video %dx%d@%dHz\n", __func__, __LINE__, 
 				video_mode == TVI ? "TVI" : "AHD", bt->width, bt->height, fps);
@@ -613,7 +626,7 @@ static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 	struct v4l2_bt_timings *bt = &timings->bt;
 	uint32_t fps;
 	uint8_t *table;
-	uint8_t col;
+	uint8_t col, fhd_en;
 	int ret;
 
 	v4l2_dbg(1, debug, sd, "%s:\n", __func__);
@@ -645,12 +658,15 @@ static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 
 	fps = DIV_ROUND_CLOSEST_ULL(bt->pixelclock, 
 								(uint32_t)(V4L2_DV_BT_FRAME_WIDTH(bt) * V4L2_DV_BT_FRAME_HEIGHT(bt)));
-	table = tp2912_find_table(priv, bt->width, bt->height, fps, priv->chipid, video_mode, &col);
+	table = tp2912_find_table(priv, bt->width, bt->height, fps, priv->chipid, video_mode, &col, &fhd_en);
 	if(!table) {
 		v4l_err(client, "%s (line %d): failed to lookup table for %s video %dx%d@%dHz\n", __func__, __LINE__, 
 				video_mode == TVI ? "TVI" : "AHD", bt->width, bt->height, fps);
 		return -ENODEV;
 	}
+
+	/* Set GPIO FHD/CVBS enable */
+	gpiod_set_value_cansleep(priv->gpiod_fhd, fhd_en);
 
 	ret = tp2912_write_table(priv, table, col);
 	if(ret < 0) {
@@ -659,15 +675,23 @@ static int tp2912_s_dv_timings(struct v4l2_subdev *sd,
 	}
 
 	/* Output test pattern if enabled */
-	if(test_pattern) {
-		ret = tp2912_modify(priv, REG_MODE, 
-									test_pattern ? 0 : BIT(6),
-									test_pattern ? BIT(6) : 0 
+	ret = tp2912_modify(priv, REG_MODE, 
+								test_pattern ? 0 : BIT(6),
+								test_pattern ? BIT(6) : 0 
+					);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write register REG_MODE. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
+	/* AHD or TVI */
+	ret = tp2912_modify(priv, REG_ENC_MODE, 
+								BIT(5),
+								video_mode == AHD ? BIT(5) : 0
 						);
-		if(ret < 0) {
-			v4l_err(client, "%s (line %d): failed to write register REG_MODE. Error = %d\n", __func__, __LINE__, ret);
-			return ret;
-		}
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write register REG_ENC_MODE. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
 	}
 
 	return 0;
@@ -721,8 +745,12 @@ static int tp2912_log_status(struct v4l2_subdev *sd)
 
 	v4l_info(client, "=== Configured video info ===\n \
 			Video signal: %s\n \
+			FHD enable: %s\n \
+			Current mode enable: %s\n \
 			Output mode: %s \n\n",
 			video_mode == TVI ? "TVI" : "AHD",
+			gpiod_get_value_cansleep(priv->gpiod_fhd) ? "yes" : "no",
+			current_mode ? "yes" : "no",
 			diff_mode == true ? "Differential" : "Single-ended");
 
 	v4l_info(client, "=== Interrupt status ===\n \
@@ -907,6 +935,14 @@ static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
 				return ret;
 			}
 		break;
+		case V4L2_CID_TP2912_CURRENT_MODE:
+			current_mode = ctrl->val ? true : false;
+			ret = tp2912_set_output_mode(priv);
+			if(ret < 0) {
+				v4l_err(client, "%s (line %d): failed to set output mode. Error = %d\n", __func__, __LINE__, ret);
+				return ret;
+			}
+		break;
 		case V4L2_CID_TP2912_VIDEO_MODE:
 			ret = sd->ops->video->g_dv_timings(sd, &timings);
 			if(ret < 0) {
@@ -947,6 +983,17 @@ static const struct v4l2_ctrl_config tp2912_ctrl_diff_mode = {
 	.def = false,
 };
 
+static const struct v4l2_ctrl_config tp2912_ctrl_current_mode = {
+	.ops = &tp2912_ctrl_ops,
+	.id = V4L2_CID_TP2912_CURRENT_MODE,
+	.name = "Current mode output",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = false,
+	.max = true,
+	.step = 1,
+	.def = false,
+};
+
 static const struct v4l2_ctrl_config tp2912_ctrl_video_mode = {
 	.ops = &tp2912_ctrl_ops,
 	.id = V4L2_CID_TP2912_VIDEO_MODE,
@@ -978,6 +1025,12 @@ static int tp2912_probe(struct i2c_client *client,
 	if (priv == NULL)
 		return -ENOMEM;
 
+	priv->gpiod_fhd = devm_gpiod_get(&client->dev, "fhd", GPIOD_OUT_HIGH);
+	if (IS_ERR(priv->gpiod_fhd)) {
+		v4l_err(client, "%s (line %d): failed to get FHD gpio\n", __func__, __LINE__);
+		return PTR_ERR(priv->gpiod_fhd);
+	}
+
 	priv->dv_timings = default_timing;
 	sd = &priv->sd;
 	hdl = &priv->hdl;
@@ -1007,6 +1060,7 @@ static int tp2912_probe(struct i2c_client *client,
 	v4l2_ctrl_new_std(hdl, &tp2912_ctrl_ops,
 					  V4L2_CID_GAIN, -128, 127, 1, 0);
 	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_diff_mode, NULL);
+	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_current_mode, NULL);
 	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_video_mode, NULL);
 
 	ret = tp2912_init(priv);

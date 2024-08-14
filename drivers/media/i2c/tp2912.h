@@ -36,6 +36,7 @@ enum {
 };
 
 #define TABLE_HEADER_SIZE 2
+/* COLUMN INDEX */
 enum {
 	WIDTH_INDEX = 0,
 	HEIGHT_INDEX,
@@ -44,10 +45,12 @@ enum {
 	MODE_INDEX,
 	TABLE_INDEX,
 	COL_INDEX,
+	FHD_EN_INDEX,
 };
 
 #define V4L2_CID_TP2912_DIFF_MODE		(V4L2_CID_DV_CLASS_BASE + 0x1000)
 #define V4L2_CID_TP2912_VIDEO_MODE		(V4L2_CID_DV_CLASS_BASE + 0x1001)
+#define V4L2_CID_TP2912_CURRENT_MODE	(V4L2_CID_DV_CLASS_BASE + 0x1002)
 
 #define TP2912_MAX_WIDTH 1920
 #define TP2912_MAX_HEIGHT 1200
@@ -1331,61 +1334,66 @@ uint8_t TP2910_TVIPAL_DataSet[] = {
 	REG_TXDRIVER_1,   0x10
 };
 
+/* Note:
+ * When modifying this table, please also 
+ *  + Update "Column count" if adding more row 
+ *  + Update "Row count" and  COLUMN INDEX enum if adding more column
+ */
 uint64_t tp2912_parent_table[] = {
 /* Table header */
-	7, /* Column count */
+	8, /* Column count */
 	43, /* Row count */
 
 /* Table data */
-/* width         height         fps                chipid  bitmask                         TVI/AHD                   table                        column */
-	1920,       1080,           30,        BIT(TP2912) | BIT(TP2912B) | BIT(TP2915),       AHD,       (uint64_t)TP2912_AHD1080P_DataSet      ,      1,
-	1920,       1080,           25,        BIT(TP2912) | BIT(TP2912B) | BIT(TP2915),       AHD,       (uint64_t)TP2912_AHD1080P_DataSet      ,      2,
-	1920,       1080,           30,        TP2910                                  ,       AHD,       (uint64_t)TP2910_AHD1080P_DataSet      ,      1,
-	1920,       1080,           25,        TP2910                                  ,       AHD,       (uint64_t)TP2910_AHD1080P_DataSet      ,      2,
-	1920,       1080,           30,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI1080P_DataSet      ,      1,
-	1920,       1080,           25,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI1080P_DataSet      ,      2,
-	1920,       1080,           30,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI1080P3025_DataSet ,      1,
-	1920,       1080,           25,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI1080P3025_DataSet ,      2,
-	1920,       1080,           30,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI1080P_DataSet      ,      1,
-	1920,       1080,           25,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI1080P_DataSet      ,      2,
-	1920,       1080,           60,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI1080P60_DataSet   ,      1,
-	1280,        720,           30,        BIT(TP2912)                             ,       AHD,       (uint64_t)TP2912_AHD720P_DataSet       ,      1,
-	1280,        720,           25,        BIT(TP2912)                             ,       AHD,       (uint64_t)TP2912_AHD720P_DataSet       ,      2,
-	1280,        720,           30,        BIT(TP2912B)                            ,       AHD,       (uint64_t)TP2912_AHD720P_DataSet       ,      5,
-	1280,        720,           25,        BIT(TP2912B)                            ,       AHD,       (uint64_t)TP2912_AHD720P_DataSet       ,      6,
-	1280,        720,           30,        BIT(TP2910)                             ,       AHD,       (uint64_t)TP2910_AHD720P_DataSet       ,      1,
-	1280,        720,           25,        BIT(TP2910)                             ,       AHD,       (uint64_t)TP2910_AHD720P_DataSet       ,      2,
-	1280,        720,           60,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI720P_DataSet       ,      1,
-	1280,        720,           50,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI720P_DataSet       ,      2,
-	1280,        720,           30,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI720P_DataSet       ,      3,
-	1280,        720,           25,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI720P_DataSet       ,      4,
-	1280,        720,           60,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI720P_DataSet      ,      1,
-	1280,        720,           50,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI720P_DataSet      ,      2,
-	1280,        720,           30,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI720P_DataSet      ,      3,
-	1280,        720,           25,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI720P_DataSet      ,      4,
-	1280,        720,           60,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI720P_DataSet       ,      1,
-	1280,        720,           50,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI720P_DataSet       ,      2,
-	1280,        720,           30,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI720P_DataSet       ,      3,
-	1280,        720,           25,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVI720P_DataSet       ,      4,
-	/* NTSC */
-	720,         480,           60,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVINTSC_DataSet       ,      1,
-	720,         480,           60,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVINTSC_DataSet      ,      1,
-	720,         480,           60,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVINTSC_DataSet       ,      1,
-	/* PAL */
-	720,         576,           50,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVIPAL_DataSet        ,      1,
-	720,         576,           50,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVIPAL_DataSet       ,      1,
-	720,         576,           50,        BIT(TP2910)                             ,       TVI,       (uint64_t)TP2910_TVIPAL_DataSet        ,      1,
-	/* 4M */
-	2560,        1440,          30,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI4M_DataSet         ,      1,
-	2560,        1440,          25,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI4M_DataSet         ,      2,
-	2560,        1440,          30,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI4M_DataSet        ,      1,
-	2560,        1440,          25,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI4M_DataSet        ,      2,
-	/* 5M */
-	2592,        1944,          20,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI5M20_DataSet       ,      1,
-	2592,        1944,          20,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI5M20_DataSet      ,      1,
-	/* 8M */
-	3840,        2160,          15,        BIT(TP2912)                             ,       TVI,       (uint64_t)TP2912_TVI8M15_DataSet       ,      1,
-	3840,        2160,          125,       BIT(TP2912B) | BIT(TP2915)              ,       TVI,       (uint64_t)TP2912B_TVI8M125_DataSet     ,      1,
+/* width         height         fps                chipid  bitmask                      TVI/AHD                     table                        column   FHD_EN */
+	1920,       1080,           30,        BIT(TP2912) | BIT(TP2912B) | BIT(TP2915),       AHD,      (uint64_t)TP2912_AHD1080P_DataSet      ,      1,      1,
+	1920,       1080,           25,        BIT(TP2912) | BIT(TP2912B) | BIT(TP2915),       AHD,      (uint64_t)TP2912_AHD1080P_DataSet      ,      2,      1,
+	1920,       1080,           30,        TP2910                                  ,       AHD,      (uint64_t)TP2910_AHD1080P_DataSet      ,      1,      1,
+	1920,       1080,           25,        TP2910                                  ,       AHD,      (uint64_t)TP2910_AHD1080P_DataSet      ,      2,      1,
+	1920,       1080,           30,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI1080P_DataSet      ,      1,      1,
+	1920,       1080,           25,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI1080P_DataSet      ,      2,      1,
+	1920,       1080,           30,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI1080P3025_DataSet ,      1,      1,
+	1920,       1080,           25,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI1080P3025_DataSet ,      2,      1,
+	1920,       1080,           30,        BIT(TP2910)                             ,       TVI,      (uint64_t)TP2910_TVI1080P_DataSet      ,      1,      1,
+	1920,       1080,           25,        BIT(TP2910)                             ,       TVI,      (uint64_t)TP2910_TVI1080P_DataSet      ,      2,      1,
+	1920,       1080,           60,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI1080P60_DataSet   ,      1,      1,
+	1280,        720,           30,        BIT(TP2912)                             ,       AHD,      (uint64_t)TP2912_AHD720P_DataSet       ,      1,      0,
+	1280,        720,           25,        BIT(TP2912)                             ,       AHD,      (uint64_t)TP2912_AHD720P_DataSet       ,      2,      0,
+	1280,        720,           30,        BIT(TP2912B)                            ,       AHD,      (uint64_t)TP2912_AHD720P_DataSet       ,      5,      0,
+	1280,        720,           25,        BIT(TP2912B)                            ,       AHD,      (uint64_t)TP2912_AHD720P_DataSet       ,      6,      0,
+	1280,        720,           30,        BIT(TP2910)                             ,       AHD,      (uint64_t)TP2910_AHD720P_DataSet       ,      1,      0,
+	1280,        720,           25,        BIT(TP2910)                             ,       AHD,      (uint64_t)TP2910_AHD720P_DataSet       ,      2,      0,
+	1280,        720,           60,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI720P_DataSet       ,      1,      1,
+	1280,        720,           50,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI720P_DataSet       ,      2,      1,
+	1280,        720,           30,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI720P_DataSet       ,      3,      1,
+	1280,        720,           25,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI720P_DataSet       ,      4,      1,
+	1280,        720,           60,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI720P_DataSet      ,      1,      1,
+	1280,        720,           50,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI720P_DataSet      ,      2,      1,
+	1280,        720,           30,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI720P_DataSet      ,      3,      1,
+	1280,        720,           25,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI720P_DataSet      ,      4,      1,
+	1280,        720,           60,        BIT(TP2910)                             ,       TVI,      (uint64_t)TP2910_TVI720P_DataSet       ,      1,      1,
+	1280,        720,           50,        BIT(TP2910)                             ,       TVI,      (uint64_t)TP2910_TVI720P_DataSet       ,      2,      1,
+	1280,        720,           30,        BIT(TP2910)                             ,       TVI,      (uint64_t)TP2910_TVI720P_DataSet       ,      3,      1,
+	1280,        720,           25,        BIT(TP2910)                             ,       TVI,      (uint64_t)TP2910_TVI720P_DataSet       ,      4,      1,
+	/* NTSC */                                                                                                                                              
+	720,         480,           60,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVINTSC_DataSet       ,      1,      1,
+	720,         480,           60,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVINTSC_DataSet      ,      1,      1,
+	720,         480,           60,        BIT(TP2910)                             ,       TVI,      (uint64_t)TP2910_TVINTSC_DataSet       ,      1,      1,
+	/* PAL */                                                                                                                                               
+	720,         576,           50,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVIPAL_DataSet        ,      1,      1,
+	720,         576,           50,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVIPAL_DataSet       ,      1,      1,
+	720,         576,           50,        BIT(TP2910)                             ,       TVI,      (uint64_t)TP2910_TVIPAL_DataSet        ,      1,      1,
+	/* 4M */                                                                                                                                                
+	2560,        1440,          30,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI4M_DataSet         ,      1,      1,
+	2560,        1440,          25,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI4M_DataSet         ,      2,      1,
+	2560,        1440,          30,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI4M_DataSet        ,      1,      1,
+	2560,        1440,          25,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI4M_DataSet        ,      2,      1,
+	/* 5M */                                                                                                                                                
+	2592,        1944,          20,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI5M20_DataSet       ,      1,      1,
+	2592,        1944,          20,        BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI5M20_DataSet      ,      1,      1,
+	/* 8M */                                                                                                                                                
+	3840,        2160,          15,        BIT(TP2912)                             ,       TVI,      (uint64_t)TP2912_TVI8M15_DataSet       ,      1,      1,
+	3840,        2160,          125,       BIT(TP2912B) | BIT(TP2915)              ,       TVI,      (uint64_t)TP2912B_TVI8M125_DataSet     ,      1,      1,
 };
 
 #endif
