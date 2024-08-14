@@ -911,11 +911,14 @@ static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
 	struct tp2912_priv *priv = sd_to_priv(sd);
 	struct v4l2_dv_timings timings;
 	int ret = 0;
+	bool backup_bool;
+	int backup_int;
 
 	switch (ctrl->id) {
 		case V4L2_CID_GAIN:
 			break;
 		case V4L2_CID_TEST_PATTERN:
+			backup_bool = test_pattern;
 			test_pattern = ctrl->val ? true : false;
 			/* Output test pattern if enabled */
 			ret = tp2912_modify(priv, REG_MODE, 
@@ -924,22 +927,27 @@ static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
 							);
 			if(ret < 0) {
 				v4l_err(client, "%s (line %d): failed to write register REG_MODE. Error = %d\n", __func__, __LINE__, ret);
+				test_pattern = backup_bool;
 				return ret;
 			}
 			break;
 		case V4L2_CID_TP2912_DIFF_MODE:
+			backup_bool = diff_mode;
 			diff_mode = ctrl->val ? true : false;
 			ret = tp2912_set_output_mode(priv);
 			if(ret < 0) {
 				v4l_err(client, "%s (line %d): failed to set output mode. Error = %d\n", __func__, __LINE__, ret);
+				diff_mode = backup_bool;
 				return ret;
 			}
 		break;
 		case V4L2_CID_TP2912_CURRENT_MODE:
+			backup_bool = current_mode;
 			current_mode = ctrl->val ? true : false;
 			ret = tp2912_set_output_mode(priv);
 			if(ret < 0) {
 				v4l_err(client, "%s (line %d): failed to set output mode. Error = %d\n", __func__, __LINE__, ret);
+				current_mode = backup_bool;
 				return ret;
 			}
 		break;
@@ -951,12 +959,14 @@ static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
 			}
 
 			/* Update video mode */
+			backup_int = video_mode;
 			video_mode = ctrl->val;
 
 			/* Update timing */
 			ret = sd->ops->video->s_dv_timings(sd, &timings);
 			if(ret < 0) {
 				v4l_err(client, "%s (line %d): failed to set timing. Error = %d\n", __func__, __LINE__, ret);
+				video_mode = backup_int;
 				return ret;
 			}
 		break;
@@ -1047,7 +1057,7 @@ static int tp2912_probe(struct i2c_client *client,
 	sd->ctrl_handler = hdl;
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 
-	ret = v4l2_ctrl_handler_init(hdl, 2);
+	ret = v4l2_ctrl_handler_init(hdl, 5);
 	if (ret) {
 		v4l_err(client, "%s (line %d): failed to v4l2_ctrl_handler_init(). Error = %d\n", __func__, __LINE__, ret);
 		goto error_1;
