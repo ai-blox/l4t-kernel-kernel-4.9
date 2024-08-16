@@ -951,6 +951,9 @@ static int tp2912_s_ctrl(struct v4l2_ctrl *ctrl)
 				return ret;
 			}
 		break;
+		case V4L2_CID_TP2912_FORCE_FHD_EN:
+			gpiod_set_value_cansleep(priv->gpiod_fhd, ctrl->val ? 1 : 0);
+		break;
 		case V4L2_CID_TP2912_VIDEO_MODE:
 			ret = sd->ops->video->g_dv_timings(sd, &timings);
 			if(ret < 0) {
@@ -997,6 +1000,17 @@ static const struct v4l2_ctrl_config tp2912_ctrl_current_mode = {
 	.ops = &tp2912_ctrl_ops,
 	.id = V4L2_CID_TP2912_CURRENT_MODE,
 	.name = "Current mode output",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = false,
+	.max = true,
+	.step = 1,
+	.def = false,
+};
+
+static const struct v4l2_ctrl_config tp2912_ctrl_fhd_en = {
+	.ops = &tp2912_ctrl_ops,
+	.id = V4L2_CID_TP2912_FORCE_FHD_EN,
+	.name = "Enable FHD",
 	.type = V4L2_CTRL_TYPE_BOOLEAN,
 	.min = false,
 	.max = true,
@@ -1057,7 +1071,7 @@ static int tp2912_probe(struct i2c_client *client,
 	sd->ctrl_handler = hdl;
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 
-	ret = v4l2_ctrl_handler_init(hdl, 5);
+	ret = v4l2_ctrl_handler_init(hdl, 6);
 	if (ret) {
 		v4l_err(client, "%s (line %d): failed to v4l2_ctrl_handler_init(). Error = %d\n", __func__, __LINE__, ret);
 		goto error_1;
@@ -1071,6 +1085,7 @@ static int tp2912_probe(struct i2c_client *client,
 					  V4L2_CID_GAIN, -128, 127, 1, 0);
 	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_diff_mode, NULL);
 	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_current_mode, NULL);
+	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_fhd_en, NULL);
 	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_video_mode, NULL);
 
 	ret = tp2912_init(priv);
