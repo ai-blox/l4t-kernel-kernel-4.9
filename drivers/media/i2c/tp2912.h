@@ -461,7 +461,7 @@ enum {
 uint8_t  TP2912_AHD1080P_DataSet[] = {
 	/* Table header */
 	3, /* Column count */
-	25, /* Row count */
+	27, /* Row count */
 
 	/* Table data */
 	/* Registers     1080P30       1080P25   */
@@ -489,14 +489,16 @@ uint8_t  TP2912_AHD1080P_DataSet[] = {
 	REG_FS_2,         0x78,         0xbe,
 	REG_FS_1,         0x16,         0xd6,
 	REG_MISC2,        0x37,         0x37,
-	REG_TXDRIVER_1,   0x50,         0x50
+	REG_TXDRIVER_1,   0x50,         0x50,
+	REG_DAC,          0x41,         0x41,
+	REG_PLLDICTRL_II, 0x21,         0x21
 };
 
 /* TP2912B and TP2915 use the same data set for AHD720P */
 uint8_t  TP2912_AHD720P_DataSet[] = {
 	/* Table header */
 	9, /* Column count */
-	26, /* Row count */
+	28, /* Row count */
 
 	/* Table data */
 	/*               |-----------------------------------------------------|-----------------------------------------------------|
@@ -529,7 +531,9 @@ uint8_t  TP2912_AHD720P_DataSet[] = {
 	REG_FS_2,         0x80,         0x04,        0x14,         0x44,         0x80,         0x04,        0x14,         0x44,
 	REG_FS_1,         0x77,         0x23,        0x7a,         0x44,         0x77,         0x23,        0x7a,         0x44,
 	REG_MISC2,        0x37,         0x37,        0x37,         0x37,         0x37,         0x37,        0x37,         0x37,
-	REG_TXDRIVER_1,   0x90,         0x90,        0x90,         0x90,         0x10,         0x10,        0x10,         0x10
+	REG_TXDRIVER_1,   0x90,         0x90,        0x90,         0x90,         0x10,         0x10,        0x10,         0x10,
+	REG_DAC,          0x41,         0x41,        0x41,         0x41,         0x41,         0x41,        0x41,         0x41,
+	REG_PLLDICTRL_II, 0x61,         0x61,        0x61,         0x61,         0x61,         0x61,        0x61,         0x61
 };
 
 uint8_t  TP2912_AHD4M_DataSet[] = {

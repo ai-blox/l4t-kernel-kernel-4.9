@@ -360,13 +360,6 @@ static int tp2912_set_output_mode(struct tp2912_priv *priv) {
 					v4l_err(client, "%s (line %d): failed to write register REG_PTZ_2. Error = %d\n", __func__, __LINE__, ret);
 					return ret;
 				}
-
-				/* Hidden register */
-				ret = tp2912_write(priv, 0x45, 0x40);
-				if(ret < 0) {
-					v4l_err(client, "%s (line %d): failed to write register 0x45. Error = %d\n", __func__, __LINE__, ret);
-					return ret;
-				}
 			}
 		} else {
 			ret = tp2912_modify(priv, REG_TXDRIVER_3, 
