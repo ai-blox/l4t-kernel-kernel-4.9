@@ -498,7 +498,7 @@ uint8_t  TP2912_AHD1080P_DataSet[] = {
 uint8_t  TP2912_AHD720P_DataSet[] = {
 	/* Table header */
 	9, /* Column count */
-	28, /* Row count */
+	29, /* Row count */
 
 	/* Table data */
 	/*               |-----------------------------------------------------|-----------------------------------------------------|
@@ -523,6 +523,7 @@ uint8_t  TP2912_AHD720P_DataSet[] = {
 	REG_YLMHI,        0xeb,         0xeb,        0xeb,         0xeb,         0xeb,         0xeb,        0xeb,         0xeb,
 	REG_CLMHI,        0xf0,         0xf0,        0xf0,         0xf0,         0xf0,         0xf0,        0xf0,         0xf0,
 	REG_CLMLO,        0x10,         0x10,        0x10,         0x10,         0x10,         0x10,        0x10,         0x10,
+	REG_YGAIN,        0x57,         0x57,        0x57,         0x57,         0x57,         0x57,        0x57,         0x57,
 	REG_UGAIN,        0xa6,         0xa6,        0xa6,         0xa6,         0xa6,         0xa6,        0xa6,         0xa6,
 	REG_VGAIN,        0xe6,         0xe6,        0xe6,         0xe6,         0xe6,         0xe6,        0xe6,         0xe6,
 	REG_BGAIN,        0xf8,         0xf8,        0xf8,         0xf8,         0xf8,         0xf8,        0xf8,         0xf8,
