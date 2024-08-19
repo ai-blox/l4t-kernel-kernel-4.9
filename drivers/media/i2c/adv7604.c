@@ -3296,7 +3296,7 @@ static int adv76xx_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	static struct v4l2_dv_timings def_timing =
-		V4L2_DV_BT_CEA_1280X720P60;
+		V4L2_DV_BT_CEA_1280X720P30;
 	struct adv76xx_state *state;
 	struct v4l2_ctrl_handler *hdl;
 	struct v4l2_ctrl *ctrl;

@@ -32,11 +32,18 @@
 #include "tp2912.h"
 
 static int debug = 2;
-static int video_mode;
+static int video_mode = AHD;
 static bool diff_mode = false;
 static bool current_mode = false;
-static bool test_pattern;
+static bool test_pattern = false;
+static bool fhd_enable = false;
+module_param(video_mode, int, 0644);
+module_param(diff_mode, bool, 0644);
+module_param(current_mode, bool, 0644);
+module_param(test_pattern, bool, 0644);
+module_param(fhd_enable, bool, 0644);
 module_param(debug, int, 0644);
+
 MODULE_PARM_DESC(debug, "debug level (0-2)");
 MODULE_DESCRIPTION("TP2912 - Untra High Definition HD-TVI Video Encoder driver");
 MODULE_AUTHOR("Nari");
@@ -978,7 +985,7 @@ static const struct v4l2_ctrl_ops tp2912_ctrl_ops = {
 	.s_ctrl = tp2912_s_ctrl,
 };
 
-static const struct v4l2_ctrl_config tp2912_ctrl_diff_mode = {
+static struct v4l2_ctrl_config tp2912_ctrl_diff_mode = {
 	.ops = &tp2912_ctrl_ops,
 	.id = V4L2_CID_TP2912_DIFF_MODE,
 	.name = "Differential mode output",
@@ -986,10 +993,10 @@ static const struct v4l2_ctrl_config tp2912_ctrl_diff_mode = {
 	.min = false,
 	.max = true,
 	.step = 1,
-	.def = false,
+	.def = false,  /* will be overwrite by kernel parameter diff_mode */
 };
 
-static const struct v4l2_ctrl_config tp2912_ctrl_current_mode = {
+static struct v4l2_ctrl_config tp2912_ctrl_current_mode = {
 	.ops = &tp2912_ctrl_ops,
 	.id = V4L2_CID_TP2912_CURRENT_MODE,
 	.name = "Current mode output",
@@ -997,10 +1004,10 @@ static const struct v4l2_ctrl_config tp2912_ctrl_current_mode = {
 	.min = false,
 	.max = true,
 	.step = 1,
-	.def = false,
+	.def = false,  /* will be overwrite by kernel parameter current_mode */
 };
 
-static const struct v4l2_ctrl_config tp2912_ctrl_fhd_en = {
+static struct v4l2_ctrl_config tp2912_ctrl_fhd_en = {
 	.ops = &tp2912_ctrl_ops,
 	.id = V4L2_CID_TP2912_FORCE_FHD_EN,
 	.name = "Enable FHD",
@@ -1008,10 +1015,10 @@ static const struct v4l2_ctrl_config tp2912_ctrl_fhd_en = {
 	.min = false,
 	.max = true,
 	.step = 1,
-	.def = false,
+	.def = false,  /* will be overwrite by kernel parameter fhd_enable */
 };
 
-static const struct v4l2_ctrl_config tp2912_ctrl_video_mode = {
+static struct v4l2_ctrl_config tp2912_ctrl_video_mode = {
 	.ops = &tp2912_ctrl_ops,
 	.id = V4L2_CID_TP2912_VIDEO_MODE,
 	.name = "TVI/AHD mode",
@@ -1019,7 +1026,7 @@ static const struct v4l2_ctrl_config tp2912_ctrl_video_mode = {
 	.min = 0,
 	.max = VIDEO_MODE_NUM - 1,
 	.step = 1,
-	.def = TVI,
+	.def = AHD, /* will be overwrite by kernel parameter video_mode */
 };
 
 static int tp2912_probe(struct i2c_client *client, 
@@ -1029,7 +1036,7 @@ static int tp2912_probe(struct i2c_client *client,
 	struct v4l2_ctrl_handler *hdl;
 	struct v4l2_subdev *sd;
 	static const struct v4l2_dv_timings default_timing =
-						 V4L2_DV_BT_CEA_1280X720P60;
+						 V4L2_DV_BT_CEA_1280X720P30;
 
 	/* Check if the adapter supports the needed features */
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
@@ -1070,10 +1077,14 @@ static int tp2912_probe(struct i2c_client *client,
 		goto error_1;
 	}
 
+	tp2912_ctrl_video_mode.def = video_mode;
+	tp2912_ctrl_diff_mode.def = diff_mode;
+	tp2912_ctrl_current_mode.def = current_mode;
+	tp2912_ctrl_fhd_en.def = fhd_enable;
 	v4l2_ctrl_new_std_menu_items(hdl, &tp2912_ctrl_ops,
 								 V4L2_CID_TEST_PATTERN,
 								 ARRAY_SIZE(tp2912_test_pattern_menu) - 1, 0,
-								 1 /* def */, tp2912_test_pattern_menu);
+								 test_pattern ? 1 : 0 /* def */, tp2912_test_pattern_menu);
 	v4l2_ctrl_new_std(hdl, &tp2912_ctrl_ops,
 					  V4L2_CID_GAIN, -128, 127, 1, 0);
 	v4l2_ctrl_new_custom(hdl, &tp2912_ctrl_diff_mode, NULL);
