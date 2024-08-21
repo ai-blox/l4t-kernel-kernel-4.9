@@ -831,6 +831,12 @@ static int tp2912_s_power(struct v4l2_subdev *sd, int on)
 	if (priv->power_on == !!on)
 		return 0;
 
+	ret = tp2912_modify(priv, REG_PTZ_1, 0x07, priv->power_on ? 0 : 0x07);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): failed to write REG_PTZ_1. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+
 	if (on) {
 		priv->power_on = true;
 	} else {
@@ -1156,6 +1162,13 @@ static int tp2912_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct tp2912_priv *priv = sd_to_priv(sd);
 	struct v4l2_ctrl_handler *hdl = &priv->hdl;
+	int ret;
+
+	ret = tp2912_s_power(sd, false);
+	if(ret < 0) {
+		v4l_err(client, "%s (line %d): tp2912_s_power() failed. Error = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
 
 	v4l2_device_unregister(&priv->v4l2_dev);
 	v4l2_ctrl_handler_free(hdl);

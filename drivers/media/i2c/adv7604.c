@@ -212,6 +212,7 @@ struct adv76xx_state {
 	struct v4l2_ctrl *free_run_color_manual_ctrl;
 	struct v4l2_ctrl *free_run_color_ctrl;
 	struct v4l2_ctrl *ddc_cec_hpd_connect_ctrl;
+	struct v4l2_ctrl *free_run_enable_ctrl;
 	struct v4l2_ctrl *rgb_quantization_range_ctrl;
 };
 
@@ -1235,6 +1236,9 @@ static int adv76xx_s_ctrl(struct v4l2_ctrl *ctrl)
 		   driver has to try a number of phases and analyze the picture
 		   quality before settling on the best performing phase. */
 		afe_write(sd, 0xc8, ctrl->val);
+		return 0;
+	case V4L2_CID_ADV_RX_FREE_RUN_ENABLE:
+		cp_write_clr_set(sd, 0xba, BIT(0), ctrl->val);
 		return 0;
 	case V4L2_CID_ADV_RX_FREE_RUN_COLOR_MANUAL:
 		/* Use the default blue color for free running mode,
@@ -2735,6 +2739,17 @@ static const struct v4l2_ctrl_config adv76xx_ctrl_ddc_cec_hpd_connect = {
 	.def = true,
 };
 
+static const struct v4l2_ctrl_config adv76xx_ctrl_free_run_enable = {
+	.ops = &adv76xx_ctrl_ops,
+	.id = V4L2_CID_ADV_RX_FREE_RUN_ENABLE,
+	.name = "Free running enable",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = false,
+	.max = true,
+	.step = 1,
+	.def = false,
+};
+
 /* ----------------------------------------------------------------------- */
 
 static int adv76xx_core_init(struct v4l2_subdev *sd)
@@ -3484,6 +3499,8 @@ static int adv76xx_probe(struct i2c_client *client,
 		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_free_run_color, NULL);
 	state->ddc_cec_hpd_connect_ctrl =
 		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_ddc_cec_hpd_connect, NULL);
+	state->free_run_enable_ctrl =
+		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_free_run_enable, NULL);
 
 	sd->ctrl_handler = hdl;
 	if (hdl->error) {
