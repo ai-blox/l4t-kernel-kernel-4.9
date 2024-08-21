@@ -168,6 +168,7 @@ struct adv76xx_state {
 
 	struct gpio_desc *hpd_gpio[4];
 	struct gpio_desc *reset_gpio;
+	struct gpio_desc *ddc_cec_hpd_connect_gpio;
 
 	struct v4l2_subdev sd;
 	struct v4l2_device v4l2_dev;
@@ -210,6 +211,7 @@ struct adv76xx_state {
 	struct v4l2_ctrl *analog_sampling_phase_ctrl;
 	struct v4l2_ctrl *free_run_color_manual_ctrl;
 	struct v4l2_ctrl *free_run_color_ctrl;
+	struct v4l2_ctrl *ddc_cec_hpd_connect_ctrl;
 	struct v4l2_ctrl *rgb_quantization_range_ctrl;
 };
 
@@ -1243,6 +1245,9 @@ static int adv76xx_s_ctrl(struct v4l2_ctrl *ctrl)
 		cp_write(sd, 0xc0, (ctrl->val & 0xff0000) >> 16);
 		cp_write(sd, 0xc1, (ctrl->val & 0x00ff00) >> 8);
 		cp_write(sd, 0xc2, (u8)(ctrl->val & 0x0000ff));
+		return 0;
+	case V4L2_CID_ADV_CONNECT_DDC_CEC_HPA:
+		gpiod_set_value_cansleep(state->ddc_cec_hpd_connect_gpio, ctrl->val);
 		return 0;
 	}
 	return -EINVAL;
@@ -2719,6 +2724,17 @@ static const struct v4l2_ctrl_config adv76xx_ctrl_free_run_color = {
 	.def = 0x0,
 };
 
+static const struct v4l2_ctrl_config adv76xx_ctrl_ddc_cec_hpd_connect = {
+	.ops = &adv76xx_ctrl_ops,
+	.id = V4L2_CID_ADV_CONNECT_DDC_CEC_HPA,
+	.name = "Connect DDC, CEC, HPD pins",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = false,
+	.max = true,
+	.step = 1,
+	.def = true,
+};
+
 /* ----------------------------------------------------------------------- */
 
 static int adv76xx_core_init(struct v4l2_subdev *sd)
@@ -2792,6 +2808,8 @@ static int adv76xx_core_init(struct v4l2_subdev *sd)
 	io_write(sd, 0x73, info->cable_det_mask); /* Enable cable detection (+5v) interrupts */
 	info->setup_irqs(sd);
 
+	/* Edid enable */
+	rep_write_clr_set(sd, info->edid_enable_reg, 0x01, 0x01);
 	return v4l2_ctrl_handler_setup(sd->ctrl_handler);
 }
 
@@ -3362,6 +3380,11 @@ static int adv76xx_probe(struct i2c_client *client,
 
 	// adv76xx_reset(state);
 
+	state->ddc_cec_hpd_connect_gpio = devm_gpiod_get_optional(&client->dev, "DdcCecHpd",
+								GPIOD_OUT_HIGH);
+	if (IS_ERR(state->ddc_cec_hpd_connect_gpio))
+		return PTR_ERR(state->ddc_cec_hpd_connect_gpio);
+
 	state->format = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_1X16);
 
 	sd = &state->sd;
@@ -3459,6 +3482,8 @@ static int adv76xx_probe(struct i2c_client *client,
 		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_free_run_color_manual, NULL);
 	state->free_run_color_ctrl =
 		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_free_run_color, NULL);
+	state->ddc_cec_hpd_connect_ctrl =
+		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_ddc_cec_hpd_connect, NULL);
 
 	sd->ctrl_handler = hdl;
 	if (hdl->error) {
