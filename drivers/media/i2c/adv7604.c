@@ -188,6 +188,9 @@ struct adv76xx_state {
 		u32 present;
 		unsigned blocks;
 	} edid;
+
+	struct v4l2_edid dts_edid;
+
 	u16 spa_port_a[2];
 	struct v4l2_fract aspect_ratio;
 	u32 rgb_quantization_range;
@@ -3094,6 +3097,7 @@ static int adv76xx_parse_dt(struct adv76xx_state *state)
 	struct v4l2_of_endpoint bus_cfg;
 	struct device_node *endpoint;
 	struct device_node *np;
+	int edid_size;
 	unsigned int flags;
 	int ret;
 	u32 v;
@@ -3116,6 +3120,24 @@ static int adv76xx_parse_dt(struct adv76xx_state *state)
 	else
 		state->pdata.default_input = -1;
 
+	/* Set EDID data in device tree if any */
+	state->dts_edid.edid = (u8 *)of_get_property(endpoint, "edid", &edid_size);
+	if(state->dts_edid.edid) {
+		state->dts_edid.edid = kmemdup(state->dts_edid.edid, edid_size, GFP_KERNEL);
+		state->dts_edid.blocks = edid_size / 128;
+		if(state->dts_edid.blocks > 2) {
+			v4l_err(state->i2c_clients[ADV76XX_PAGE_IO], "%s (line %d): EDID data is too big\n", __func__, __LINE__);
+			return -EINVAL;
+		}
+
+		if(state->dts_edid.blocks == 0) {
+			v4l_err(state->i2c_clients[ADV76XX_PAGE_IO], "%s (line %d): EDID data is too small\n", __func__, __LINE__);
+			return -EINVAL;
+		}
+
+		state->dts_edid.start_block = 0;
+		state->dts_edid.pad = ADV76XX_PAD_HDMI_PORT_A;
+	}
 	of_node_put(endpoint);
 
 	flags = bus_cfg.bus.parallel.flags;
@@ -3598,6 +3620,14 @@ static int adv76xx_probe(struct i2c_client *client,
 		goto err_v4l2_device_subdev;
 	}
 
+	if(state->dts_edid.edid) {
+		err = sd->ops->pad->set_edid(sd, &state->dts_edid);
+		if(err < 0) {
+			v4l_err(client, "%s (line %d): failed to set EDID. Error = %d\n", __func__, __LINE__, err);
+			goto err_v4l2_device_subdev;
+		}
+	}
+
 	err = media_device_register(&state->mdev);
 	if(err) {
 		v4l_err(client, "%s (line %d): failed register media device. Error = %d\n", __func__, __LINE__, err);
@@ -3640,6 +3670,7 @@ static int adv76xx_remove(struct i2c_client *client)
 	media_entity_cleanup(&sd->entity);
 	adv76xx_unregister_clients(to_state(sd));
 	v4l2_ctrl_handler_free(sd->ctrl_handler);
+	kfree(state->dts_edid.edid);
 	return 0;
 }
 
