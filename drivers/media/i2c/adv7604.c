@@ -168,8 +168,11 @@ struct adv76xx_state {
 
 	struct gpio_desc *hpd_gpio[4];
 	struct gpio_desc *reset_gpio;
+	struct gpio_desc *ddc_cec_hpd_connect_gpio;
 
 	struct v4l2_subdev sd;
+	struct v4l2_device v4l2_dev;
+	struct media_device mdev;
 	struct media_pad pads[ADV76XX_PAD_MAX];
 	unsigned int source_pad;
 
@@ -185,6 +188,9 @@ struct adv76xx_state {
 		u32 present;
 		unsigned blocks;
 	} edid;
+
+	struct v4l2_edid dts_edid;
+
 	u16 spa_port_a[2];
 	struct v4l2_fract aspect_ratio;
 	u32 rgb_quantization_range;
@@ -208,6 +214,8 @@ struct adv76xx_state {
 	struct v4l2_ctrl *analog_sampling_phase_ctrl;
 	struct v4l2_ctrl *free_run_color_manual_ctrl;
 	struct v4l2_ctrl *free_run_color_ctrl;
+	struct v4l2_ctrl *ddc_cec_hpd_connect_ctrl;
+	struct v4l2_ctrl *free_run_enable_ctrl;
 	struct v4l2_ctrl *rgb_quantization_range_ctrl;
 };
 
@@ -218,7 +226,7 @@ static bool adv76xx_has_afe(struct adv76xx_state *state)
 
 /* Unsupported timings. This device cannot support 720p30. */
 static const struct v4l2_dv_timings adv76xx_timings_exceptions[] = {
-	V4L2_DV_BT_CEA_1280X720P30,
+	// V4L2_DV_BT_CEA_1280X720P30,
 	{ }
 };
 
@@ -285,6 +293,8 @@ static const struct adv76xx_video_standards adv7604_prim_mode_gr[] = {
 static const struct adv76xx_video_standards adv76xx_prim_mode_hdmi_comp[] = {
 	{ V4L2_DV_BT_CEA_720X480P59_94, 0x0a, 0x00 },
 	{ V4L2_DV_BT_CEA_720X576P50, 0x0b, 0x00 },
+	{ V4L2_DV_BT_CEA_1280X720P25, 0x13, 0x03 },
+	{ V4L2_DV_BT_CEA_1280X720P30, 0x13, 0x02 },
 	{ V4L2_DV_BT_CEA_1280X720P50, 0x13, 0x01 },
 	{ V4L2_DV_BT_CEA_1280X720P60, 0x13, 0x00 },
 	{ V4L2_DV_BT_CEA_1920X1080P24, 0x1e, 0x04 },
@@ -1230,6 +1240,9 @@ static int adv76xx_s_ctrl(struct v4l2_ctrl *ctrl)
 		   quality before settling on the best performing phase. */
 		afe_write(sd, 0xc8, ctrl->val);
 		return 0;
+	case V4L2_CID_ADV_RX_FREE_RUN_ENABLE:
+		cp_write_clr_set(sd, 0xba, BIT(0), ctrl->val);
+		return 0;
 	case V4L2_CID_ADV_RX_FREE_RUN_COLOR_MANUAL:
 		/* Use the default blue color for free running mode,
 		   or supply your own. */
@@ -1239,6 +1252,9 @@ static int adv76xx_s_ctrl(struct v4l2_ctrl *ctrl)
 		cp_write(sd, 0xc0, (ctrl->val & 0xff0000) >> 16);
 		cp_write(sd, 0xc1, (ctrl->val & 0x00ff00) >> 8);
 		cp_write(sd, 0xc2, (u8)(ctrl->val & 0x0000ff));
+		return 0;
+	case V4L2_CID_ADV_CONNECT_DDC_CEC_HPA:
+		gpiod_set_value_cansleep(state->ddc_cec_hpd_connect_gpio, ctrl->val);
 		return 0;
 	}
 	return -EINVAL;
@@ -1934,7 +1950,7 @@ static int adv76xx_set_format(struct v4l2_subdev *sd,
 
 	info = adv76xx_format_info(state, format->format.code);
 	if (info == NULL)
-		info = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_2X8);
+		info = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_1X16);
 
 	adv76xx_fill_format(state, &format->format);
 	format->format.code = info->code;
@@ -2715,6 +2731,28 @@ static const struct v4l2_ctrl_config adv76xx_ctrl_free_run_color = {
 	.def = 0x0,
 };
 
+static const struct v4l2_ctrl_config adv76xx_ctrl_ddc_cec_hpd_connect = {
+	.ops = &adv76xx_ctrl_ops,
+	.id = V4L2_CID_ADV_CONNECT_DDC_CEC_HPA,
+	.name = "Connect DDC, CEC, HPD pins",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = false,
+	.max = true,
+	.step = 1,
+	.def = true,
+};
+
+static const struct v4l2_ctrl_config adv76xx_ctrl_free_run_enable = {
+	.ops = &adv76xx_ctrl_ops,
+	.id = V4L2_CID_ADV_RX_FREE_RUN_ENABLE,
+	.name = "Free running enable",
+	.type = V4L2_CTRL_TYPE_BOOLEAN,
+	.min = false,
+	.max = true,
+	.step = 1,
+	.def = false,
+};
+
 /* ----------------------------------------------------------------------- */
 
 static int adv76xx_core_init(struct v4l2_subdev *sd)
@@ -2788,6 +2826,8 @@ static int adv76xx_core_init(struct v4l2_subdev *sd)
 	io_write(sd, 0x73, info->cable_det_mask); /* Enable cable detection (+5v) interrupts */
 	info->setup_irqs(sd);
 
+	/* Edid enable */
+	rep_write_clr_set(sd, info->edid_enable_reg, 0x01, 0x01);
 	return v4l2_ctrl_handler_setup(sd->ctrl_handler);
 }
 
@@ -3057,6 +3097,7 @@ static int adv76xx_parse_dt(struct adv76xx_state *state)
 	struct v4l2_of_endpoint bus_cfg;
 	struct device_node *endpoint;
 	struct device_node *np;
+	int edid_size;
 	unsigned int flags;
 	int ret;
 	u32 v;
@@ -3079,6 +3120,24 @@ static int adv76xx_parse_dt(struct adv76xx_state *state)
 	else
 		state->pdata.default_input = -1;
 
+	/* Set EDID data in device tree if any */
+	state->dts_edid.edid = (u8 *)of_get_property(endpoint, "edid", &edid_size);
+	if(state->dts_edid.edid) {
+		state->dts_edid.edid = kmemdup(state->dts_edid.edid, edid_size, GFP_KERNEL);
+		state->dts_edid.blocks = edid_size / 128;
+		if(state->dts_edid.blocks > 2) {
+			v4l_err(state->i2c_clients[ADV76XX_PAGE_IO], "%s (line %d): EDID data is too big\n", __func__, __LINE__);
+			return -EINVAL;
+		}
+
+		if(state->dts_edid.blocks == 0) {
+			v4l_err(state->i2c_clients[ADV76XX_PAGE_IO], "%s (line %d): EDID data is too small\n", __func__, __LINE__);
+			return -EINVAL;
+		}
+
+		state->dts_edid.start_block = 0;
+		state->dts_edid.pad = ADV76XX_PAD_HDMI_PORT_A;
+	}
 	of_node_put(endpoint);
 
 	flags = bus_cfg.bus.parallel.flags;
@@ -3100,7 +3159,7 @@ static int adv76xx_parse_dt(struct adv76xx_state *state)
 
 	/* Use the default I2C addresses. */
 	state->pdata.i2c_addresses[ADV7604_PAGE_AVLINK] = 0x42;
-	state->pdata.i2c_addresses[ADV76XX_PAGE_CEC] = 0x40;
+	state->pdata.i2c_addresses[ADV76XX_PAGE_CEC] = 0x41;
 	state->pdata.i2c_addresses[ADV76XX_PAGE_INFOFRAME] = 0x3e;
 	state->pdata.i2c_addresses[ADV7604_PAGE_ESDP] = 0x38;
 	state->pdata.i2c_addresses[ADV7604_PAGE_DPP] = 0x3c;
@@ -3121,6 +3180,12 @@ static int adv76xx_parse_dt(struct adv76xx_state *state)
 	state->pdata.dr_str_data = ADV76XX_DR_STR_MEDIUM_HIGH;
 	state->pdata.dr_str_clk = ADV76XX_DR_STR_MEDIUM_HIGH;
 	state->pdata.dr_str_sync = ADV76XX_DR_STR_MEDIUM_HIGH;
+
+	/* HDMI free run Mode 1. The CP core free runs when the TMDS clock is not detected on the selected HDMI port
+	 * or it the video resolution of HDMI stream processed by the part does not match the video resolution
+	 * programmed in PRIM_MODE[3:0] and VID_STD[5:0]. 
+	 */
+	state->pdata.hdmi_free_run_mode = 0;
 
 	return 0;
 }
@@ -3267,6 +3332,7 @@ static int configure_regmaps(struct adv76xx_state *state)
 	return 0;
 }
 
+#if 0
 static void adv76xx_reset(struct adv76xx_state *state)
 {
 	if (state->reset_gpio) {
@@ -3279,12 +3345,13 @@ static void adv76xx_reset(struct adv76xx_state *state)
 		usleep_range(5000, 10000);
 	}
 }
+#endif
 
 static int adv76xx_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
-	static const struct v4l2_dv_timings cea640x480 =
-		V4L2_DV_BT_CEA_640X480P59_94;
+	static struct v4l2_dv_timings def_timing =
+		V4L2_DV_BT_CEA_1280X720P30;
 	struct adv76xx_state *state;
 	struct v4l2_ctrl_handler *hdl;
 	struct v4l2_ctrl *ctrl;
@@ -3343,15 +3410,19 @@ static int adv76xx_probe(struct i2c_client *client,
 		if (state->hpd_gpio[i])
 			v4l_info(client, "Handling HPD %u GPIO\n", i);
 	}
-	state->reset_gpio = devm_gpiod_get_optional(&client->dev, "reset",
+	// state->reset_gpio = devm_gpiod_get_optional(&client->dev, "reset",
+								// GPIOD_OUT_HIGH);
+	// if (IS_ERR(state->reset_gpio))
+		// return PTR_ERR(state->reset_gpio);
+
+	// adv76xx_reset(state);
+
+	state->ddc_cec_hpd_connect_gpio = devm_gpiod_get_optional(&client->dev, "DdcCecHpd",
 								GPIOD_OUT_HIGH);
-	if (IS_ERR(state->reset_gpio))
-		return PTR_ERR(state->reset_gpio);
+	if (IS_ERR(state->ddc_cec_hpd_connect_gpio))
+		return PTR_ERR(state->ddc_cec_hpd_connect_gpio);
 
-	adv76xx_reset(state);
-
-	state->timings = cea640x480;
-	state->format = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_2X8);
+	state->format = adv76xx_format_info(state, MEDIA_BUS_FMT_YUYV8_1X16);
 
 	sd = &state->sd;
 	v4l2_i2c_subdev_init(sd, client, &adv76xx_ops);
@@ -3448,6 +3519,10 @@ static int adv76xx_probe(struct i2c_client *client,
 		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_free_run_color_manual, NULL);
 	state->free_run_color_ctrl =
 		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_free_run_color, NULL);
+	state->ddc_cec_hpd_connect_ctrl =
+		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_ddc_cec_hpd_connect, NULL);
+	state->free_run_enable_ctrl =
+		v4l2_ctrl_new_custom(hdl, &adv76xx_ctrl_free_run_enable, NULL);
 
 	sd->ctrl_handler = hdl;
 	if (hdl->error) {
@@ -3510,12 +3585,61 @@ static int adv76xx_probe(struct i2c_client *client,
 	v4l2_info(sd, "%s found @ 0x%x (%s)\n", client->name,
 			client->addr << 1, client->adapter->name);
 
-	err = v4l2_async_register_subdev(sd);
-	if (err)
+	/* Register the v4l2_device structure */
+	err = v4l2_device_register(&client->dev, &state->v4l2_dev);
+	if (err) {
+		v4l_err(client, "%s (line %d): failed register v4l2-device. Error = %d\n", __func__, __LINE__, err);
 		goto err_entity;
+	}
+
+	state->v4l2_dev.ctrl_handler = hdl;
+	state->mdev.dev = &client->dev;
+	state->mdev.hw_revision = 10;
+	strlcpy(state->mdev.model, "ADV7611", sizeof(state->mdev.model));
+	snprintf(state->mdev.bus_info, sizeof(state->mdev.bus_info), "platform:%s",
+		 dev_name(state->mdev.dev));
+
+	media_device_init(&state->mdev);
+
+	err = v4l2_device_register_subdev(&state->v4l2_dev, sd);
+	if (err < 0) {
+		v4l_err(client, "%s (line %d): failed to register subdev. Error = %d\n", __func__, __LINE__, err);
+		goto err_v4l2_device;
+	}
+
+	err = v4l2_device_register_subdev_nodes(&state->v4l2_dev);
+	if (err < 0) {
+		v4l_err(client, "%s (line %d): failed to register subdev nodes. Error = %d\n", __func__, __LINE__, err);
+		goto err_v4l2_device_subdev;
+	}
+
+	/* Update timing */
+	err = sd->ops->video->s_dv_timings(sd, &def_timing);
+	if(err < 0) {
+		v4l_err(client, "%s (line %d): failed to set timing. Error = %d\n", __func__, __LINE__, err);
+		goto err_v4l2_device_subdev;
+	}
+
+	if(state->dts_edid.edid) {
+		err = sd->ops->pad->set_edid(sd, &state->dts_edid);
+		if(err < 0) {
+			v4l_err(client, "%s (line %d): failed to set EDID. Error = %d\n", __func__, __LINE__, err);
+			goto err_v4l2_device_subdev;
+		}
+	}
+
+	err = media_device_register(&state->mdev);
+	if(err) {
+		v4l_err(client, "%s (line %d): failed register media device. Error = %d\n", __func__, __LINE__, err);
+		goto err_v4l2_device_subdev;
+	}
 
 	return 0;
 
+err_v4l2_device_subdev:
+	v4l2_device_unregister_subdev(sd);
+err_v4l2_device:
+	v4l2_device_unregister(&state->v4l2_dev);
 err_entity:
 	media_entity_cleanup(&sd->entity);
 err_work_queues:
@@ -3546,6 +3670,7 @@ static int adv76xx_remove(struct i2c_client *client)
 	media_entity_cleanup(&sd->entity);
 	adv76xx_unregister_clients(to_state(sd));
 	v4l2_ctrl_handler_free(sd->ctrl_handler);
+	kfree(state->dts_edid.edid);
 	return 0;
 }
 

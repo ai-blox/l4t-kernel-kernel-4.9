@@ -512,6 +512,15 @@ config VIDEO_THS8200
 	  To compile this driver as a module, choose M here: the
 	  module will be called ths8200.
 
+config VIDEO_TP2912
+	tristate "Techpoint TP2912 video encoder"
+	depends on I2C
+	---help---
+	  Video output driver for Techpoint TP2912 encoder
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tp2912.
+
 comment "Camera sensor devices"
 
 config VIDEO_APTINA_PLL
